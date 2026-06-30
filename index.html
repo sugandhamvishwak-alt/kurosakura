@@ -1004,12 +1004,31 @@
   }
 
   function startStreaming() {
-    document.getElementById('video-player-container').innerHTML = `
-      <video width="100%" height="100%" controls autoplay style="object-fit: cover;">
-        <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
-      </video>
-    `;
-  }
+  const currentTitle = document.getElementById('watch-title-display').innerText;
+  const currentEpText = document.getElementById('watch-ep-display').innerText;
+  
+  const epMatch = currentEpText.match(/Episode\s+(\d+)/);
+  const episodeNumber = epMatch ? epMatch[1] : "1";
+  
+  // This cleans up special characters (like colons or exclamation marks) 
+  // so every single anime title turns into a clean link automatically!
+  const animeSlug = currentTitle.toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Removes everything except letters, numbers, and spaces
+    .replace(/\s+/g, '-');        // Changes all spaces into single hyphens
+
+  document.getElementById('video-player-container').innerHTML = `
+    <iframe 
+      src="https://vidsrc.me/embed/anime/${animeSlug}/${episodeNumber}" 
+      width="100%" 
+      height="100%" 
+      frameborder="0" 
+      allow="autoplay; fullscreen" 
+      allowfullscreen
+      style="border: none; width: 100%; height: 100%; background: #000;">
+    </iframe>
+  `;
+}
+
 
   window.onload = () => { populateHomeGrid(); };
 </script>
