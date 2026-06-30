@@ -846,5 +846,175 @@
 
 <!-- NAV -->
 <nav>
+  <div class="nav-logo">Kuro<span>Sakura</span></div>
+  <ul class="nav-links">
+    <li><a class="nav-link active" onclick="switchPage('home-page')">Home</a></li>
+    <li><a class="nav-link" onclick="switchPage('watch-page')">Stream</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="search-bar">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" placeholder="Search anime...">
+    </div>
+    <button class="btn-sign">Login</button>
+  </div>
+</nav>
+
+<main id="home-page" class="page active">
+  <div class="hero">
+    <div class="hero-bg">
+      <div class="hero-bg-art"></div>
+      <div class="hero-ink"></div>
+    </div>
+    <div class="hero-content">
+      <span class="hero-tag">Trending #1</span>
+      <h1 class="hero-title">Chainsaw Man</h1>
+      <div class="hero-meta">
+        <span class="hero-score">★ 8.6</span>
+        <span class="dot">•</span>
+        <span>Action, Dark Fantasy</span>
+        <span class="dot">•</span>
+        <span>Ep 12 / 12</span>
+      </div>
+      <p class="hero-desc">Denji is a teenage boy living with a Chainsaw Devil named Pochita. Due to the debt his father left behind, he has been living a rock-bottom life while repaying his debt by harvesting devil carcasses.</p>
+      <div class="hero-actions">
+        <button class="btn-watch" onclick="watchAnime('Chainsaw Man', 1)">▶ Watch Now</button>
+        <button class="btn-list">+ Add to List</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">Trending Now</h2>
+    </div>
+    <div class="trending-numbers">
+      <div class="trend-item" onclick="watchAnime('Chainsaw Man', 1)">
+        <span class="trend-num">1</span>
+        <div class="trend-card"><img src="https://cdn.myanimelist.net/images/anime/1486/93147l.jpg" alt="Chainsaw Man"></div>
+      </div>
+      <div class="trend-item" onclick="watchAnime('Jujutsu Kaisen', 1)">
+        <span class="trend-num">2</span>
+        <div class="trend-card"><img src="https://cdn.myanimelist.net/images/anime/1171/109222l.jpg" alt="Jujutsu Kaisen"></div>
+      </div>
+      <div class="trend-item" onclick="watchAnime('Demon Slayer', 1)">
+        <span class="trend-num">3</span>
+        <div class="trend-card"><img src="https://cdn.myanimelist.net/images/anime/1286/99889l.jpg" alt="Demon Slayer"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">Recent Releases</h2>
+      <span class="see-all">View All</span>
+    </div>
+    <div class="anime-row" id="recent-releases-grid">
+      </div>
+  </section>
+</main>
+
+<main id="watch-page" class="page">
+  <div class="watch-layout">
+    <div class="watch-main">
+      <div class="back-btn" onclick="switchPage('home-page')">← Back to Home</div>
+      
+      <div class="video-wrapper">
+        <div class="video-placeholder" id="video-player-container">
+          <button class="play-btn-big" onclick="startStreaming()">▶</button>
+          <div class="video-ep-label" id="player-ep-label">Click to stream Episode 1</div>
+        </div>
+      </div>
+
+      <div class="watch-info">
+        <h2 class="watch-title" id="watch-title-display">Anime Title</h2>
+        <div class="watch-ep-title" id="watch-ep-display">Episode 1 — Standard Stream</div>
+        
+        <div class="server-section">
+          <div class="server-label">Available Servers</div>
+          <div class="server-tabs">
+            <button class="server-tab active" onclick="switchServer(1)">Server Alpha (HD)</button>
+            <button class="server-tab" onclick="switchServer(2)">Server Hydra (Backup)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="watch-sidebar">
+      <h3 class="sidebar-title">Episodes</h3>
+      <div class="ep-list" id="sidebar-episode-list">
+        </div>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-logo">Kuro<span>Sakura</span></div>
+  <div class="footer-text">© 2026 KuroSakura App.</div>
+</footer>
+<script>
+  const animeData = [
+    { title: "Chainsaw Man", episodes: 12, score: "8.6", type: "SUB", img: "https://cdn.myanimelist.net/images/anime/1486/93147l.jpg" },
+    { title: "Jujutsu Kaisen", episodes: 24, score: "8.7", type: "SUB / DUB", img: "https://cdn.myanimelist.net/images/anime/1171/109222l.jpg" },
+    { title: "Demon Slayer", episodes: 26, score: "8.5", type: "SUB / DUB", img: "https://cdn.myanimelist.net/images/anime/1286/99889l.jpg" }
+  ];
+
+  function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+  }
+
+  function populateHomeGrid() {
+    const grid = document.getElementById('recent-releases-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    animeData.forEach(anime => {
+      const card = document.createElement('div');
+      card.className = 'anime-card';
+      card.onclick = () => watchAnime(anime.title, 1);
+      card.innerHTML = `
+        <div class="card-thumb">
+          <img src="${anime.img}" alt="${anime.title}">
+          <span class="card-badge sub">${anime.type}</span>
+          <span class="card-score">★ ${anime.score}</span>
+        </div>
+        <div class="card-info"><h3 class="card-title">${anime.title}</h3></div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function watchAnime(title, targetEpisode = 1) {
+    const anime = animeData.find(a => a.title === title) || animeData[0];
+    document.getElementById('watch-title-display').innerText = anime.title;
+    document.getElementById('watch-ep-display').innerText = `Episode ${targetEpisode} — Active Stream`;
+    
+    const sidebarList = document.getElementById('sidebar-episode-list');
+    if (sidebarList) {
+      sidebarList.innerHTML = '';
+      for (let i = 1; i <= anime.episodes; i++) {
+        const epItem = document.createElement('div');
+        epItem.className = `ep-item ${i === targetEpisode ? 'active' : ''}`;
+        epItem.onclick = () => watchAnime(anime.title, i);
+        epItem.innerHTML = `<div class="ep-num">${i}</div><div class="ep-details"><div class="ep-name">Episode ${i}</div></div>`;
+        sidebarList.appendChild(epItem);
+      }
+    }
+    switchPage('watch-page');
+  }
+
+  function startStreaming() {
+    document.getElementById('video-player-container').innerHTML = `
+      <video width="100%" height="100%" controls autoplay style="object-fit: cover;">
+        <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+      </video>
+    `;
+  }
+
+  window.onload = () => { populateHomeGrid(); };
+</script>
+</body>
+</html>
+
 
   
