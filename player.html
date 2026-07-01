@@ -15,11 +15,9 @@
     <a href="index.html" class="back-btn">Go Back Home</a>
 
         <script>
-        const params = new URLSearchParams(window.location.search);
-        const animeId = params.get('id');
+    const params = new URLSearchParams(window.location.search);
+    const animeId = params.get('id');
 
-        if (animeId) {
-            // Updated to a commonly used alternative endpoint
-            document.getElementById('videoPlayer').src = `https://vidsrc.cc/v2/embed/anime/${animeId}`;
-        }
-    </script>
+    // This assigns the URL to the video player
+    document.getElementById('videoPlayer').src = "https://www.w3schools.com/html/mov_bbb.mp4";
+</script>
