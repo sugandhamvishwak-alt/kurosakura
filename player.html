@@ -14,15 +14,12 @@
     <iframe id="videoPlayer" src="" allowfullscreen></iframe>
     <a href="index.html" class="back-btn">Go Back Home</a>
 
-    <script>
-        // 1. Grab the ID from the URL (e.g., player.html?id=12345)
+        <script>
         const params = new URLSearchParams(window.location.search);
         const animeId = params.get('id');
 
-        // 2. Load the anime stream into the iframe
         if (animeId) {
-            document.getElementById('videoPlayer').src = `https://vidsrc.xyz/embed/anime?id=${animeId}`;
+            // Updated to a commonly used alternative endpoint
+            document.getElementById('videoPlayer').src = `https://vidsrc.cc/v2/embed/anime/${animeId}`;
         }
     </script>
-</body>
-</html>
