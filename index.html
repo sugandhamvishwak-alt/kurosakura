@@ -279,8 +279,9 @@
             { id: 171218, title: { romaji: "Solo Leveling Season 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx171218-hD6orP3pY5Sg.jpg" }, bannerImage: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/171218-e3l3Wc9OQ0b3.jpg", averageScore: 87, episodes: 12, genres: ["Action", "Fantasy"], description: "The second season of Solo Leveling." },
             { id: 154587, title: { romaji: "Frieren: Beyond Journey's End" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx154587-g646ctZOfRow.jpg" }, averageScore: 93, episodes: 28, genres: ["Adventure", "Drama", "Fantasy"] },
             { id: 166873, title: { romaji: "Chainsaw Man Part 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx117002-9P6W0UvR37Y0.png" }, averageScore: 85, episodes: 12, genres: ["Action", "Gore"] },
-            { id: 21202, title: { romaji: "KonoSuba" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21202-T6I7pZIn9v6I.jpg" }, averageScore: 85, episodes: 11, genres: ["Comedy", "Fantasy"], description: "Kazuma Sato is a video game-loving shut-in whose life briefly comes to an end..." }
+                        { id: 21202, title: { romaji: "KonoSuba" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21202-T6I7pZIn9v6I.jpg" }, averageScore: 85, episodes: 11, genres: ["Comedy", "Fantasy"], description: "Kazuma Sato is a video game-loving shut-in whose life briefly comes to an end..." }
         ];
+
 
         // --- GraphQL Queries for AniList API ---
         const TRENDING_Q = `query{Page(perPage:12){media(sort:TRENDING_DESC,type:ANIME){id title{romaji}coverImage{large}bannerImage averageScore episodes genres description}}}`;
