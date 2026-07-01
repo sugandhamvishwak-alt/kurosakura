@@ -451,9 +451,13 @@ async function openWatch(id, title, score, genres, eps) {
 
 function loadPlayer() {
   if (!currentAnime) return;
-  const src = `https://vidsrc.me/embed/anime/${currentAnime.id}/${currentEp}`;
-  document.getElementById('playerWrap').innerHTML = `<iframe src="${src}" allowfullscreen allow="autoplay; fullscreen"></iframe>`;
+  const animeSlug = currentAnime.title.toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-');
+  const src = `https://vidsrc.xyz/embed/anime/${animeSlug}/${currentEp}`;
+  document.getElementById('playerWrap').innerHTML = `<iframe src="${src}" style="width:100%; height:100%; border:none;" allowfullscreen allow="autoplay; fullscreen"></iframe>`;
 }
+
 
 function buildEpList(total) {
   const list = document.getElementById('epList');
