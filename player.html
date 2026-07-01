@@ -5,20 +5,23 @@
     <title>Watch Anime</title>
     <style>
         body { background: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        iframe { width: 90%; height: 70vh; border: none; border-radius: 8px; }
+        video { width: 90%; height: 70vh; border-radius: 8px; background: #000; }
         .back-btn { margin-top: 20px; padding: 10px 20px; background: #e50914; color: white; border: none; cursor: pointer; text-decoration: none; border-radius: 5px; }
     </style>
 </head>
-<video id="videoPlayer" width="90%" height="70vh" controls>
-    <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-</video>
+<body>
+
+    <video id="videoPlayer" controls>
+        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
     <a href="index.html" class="back-btn">Go Back Home</a>
 
     <script>
         const params = new URLSearchParams(window.location.search);
         const animeId = params.get('id');
-        console.log("Current Anime ID:", animeId);
+        console.log("Loading Anime ID:", animeId);
     </script>
 </body>
 </html>
