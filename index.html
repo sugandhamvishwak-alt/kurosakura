@@ -373,12 +373,8 @@
         }
 
         function handleCardClick(id) {
-          alert("Loading player for anime ID: " + id);
-        }
-
-        function checkUserSession() {
-          console.log("Session active");
-        }
+  window.location.href = `player.html?id=${id}`;
+}
 
         // Start the app
         window.addEventListener('DOMContentLoaded', init);
