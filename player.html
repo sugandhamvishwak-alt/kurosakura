@@ -726,4 +726,22 @@ function toggleWatched() {
   }
 }
 
-f
+function shareEp() {
+  const url = window.location.href;
+  if (navigator.share) {
+    navigator.share({title: document.title, url});
+  } else {
+    navigator.clipboard?.writeText(url);
+    alert('Link copied!');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('epList').innerHTML = `<div class="error-wrap"><h3>Oops</h3><p>${msg}</p></div>`;
+  document.getElementById('animeTitle').textContent = 'Error';
+}
+
+init();
+</script>
+</body>
+</html>
