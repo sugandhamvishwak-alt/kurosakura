@@ -168,16 +168,16 @@
     <!-- HOME PAGE -->
     <main id="home-page" class="page active">
         <div class="hero">
-            <img src="" alt="" class="hero-bg" id="heroBg">
+            <img src="https://s4.anilist.co/file/anilistcdn/media/anime/banner/171218-e3l3Wc9OQ0b3.jpg" alt="" class="hero-bg" id="heroBg">
             <div class="hero-content">
                 <div class="hero-badge">🔥 TRENDING #1</div>
-                <h1 class="hero-title" id="heroTitle">Loading Catalog...</h1>
+                <h1 class="hero-title" id="heroTitle">Solo Leveling Season 2</h1>
                 <div class="hero-meta">
-                    <span id="heroScore">?</span> ★
-                    <span id="heroEps"></span>
-                    <span id="heroGenre"></span>
+                    <span id="heroScore">8.7</span> ★
+                    <span id="heroEps">12 Ep</span>
+                    <span id="heroGenre">Action, Fantasy</span>
                 </div>
-                <p class="hero-desc" id="heroDesc"></p>
+                <p class="hero-desc" id="heroDesc">The alternative world tracking portal system opens up a dangerous path for humanity's weakest hunter to arise supreme.</p>
                 <div class="btn-container">
                     <button class="btn btn-primary" id="heroWatchBtn">▶ Watch Now</button>
                 </div>
@@ -272,29 +272,11 @@
         let currentEp = 1;
         let isSignUpMode = false;
         let savedAnimeList = JSON.parse(localStorage.getItem('kuro_watchlist')) || [];
-        
-        // Global memory lookup to store media data without messing up HTML strings
         const animeStorage = {};
 
-        async function anilist(query, vars) {
-          try {
-            const r = await fetch('https://graphql.anilist.co', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-              body: JSON.stringify({ query, variables: vars })
-            });
-            const json = await r.json();
-            return json.data;
-          } catch(e) {
-            console.error("AniList API connection error", e);
-            return null;
-          }
-        }
-
-        const TRENDING_Q = `query($page:Int){Page(page:$page,perPage:10){media(sort:TRENDING_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji}coverImage{large}bannerImage averageScore episodes genres description}}}`;
-        const POPULAR_Q = `query{Page(perPage:12){media(sort:POPULARITY_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji}coverImage{large}averageScore episodes}}}`;
-        const TOP_Q = `query{Page(perPage:12){media(sort:SCORE_DESC,type:ANIME,status:FINISHED){id title{romaji}coverImage{large}averageScore episodes}}}`;
-        const SEARCH_Q = `query($s:String){Page(perPage:12){media(search:$s,type:ANIME){id title{romaji}coverImage{large}averageScore episodes}}}`;
-
-        async function init() {
-          const trending = await anilist(TRENDING_Q, {page:1})
+        // Fallback offline database to ensure the layout is NEVER empty or frozen
+        const fallbackDatabase = [
+            { id: 171218, title: { romaji: "Solo Leveling Season 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx171218-hD6orP3pY5Sg.jpg" }, bannerImage: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/171218-e3l3Wc9OQ0b3.jpg", averageScore: 87, episodes: 12, genres: ["Action", "Fantasy"], description: "The second season of Solo Leveling." },
+            { id: 154587, title: { romaji: "Frieren: Beyond Journey's End" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx154587-g646ctZOfRow.jpg" }, averageScore: 93, episodes: 28, genres: ["Adventure", "Drama", "Fantasy"] },
+            { id: 166873, title: { romaji: "Chainsaw Man Part 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx117002-9P6W0UvR37Y0.png" }, averageScore: 85, episodes: 12, genres: ["Action", "Gore"] },
+            { id: 21202, title: { romaji: "KonoSuba" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21202-T6I7pZIn9v6I.jpg" }, averageScor
