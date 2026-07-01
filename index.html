@@ -320,11 +320,12 @@
             if (watchBtn) watchBtn.onclick = () => handleCardClick(h.id);
           }
 
-          buildTrending(tList.length ? tList : fallbackDatabase);
+                   buildGrid('trendingGrid', tList.length ? tList : fallbackDatabase);
           buildGrid('popularGrid', pList.length ? pList : fallbackDatabase);
           buildGrid('topRatedGrid', trList.length ? trList : fallbackDatabase);
           checkUserSession();
         }
+
 
         async function anilist(query, variables) {
           try {
