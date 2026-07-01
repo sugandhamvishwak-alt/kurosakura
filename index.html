@@ -279,4 +279,108 @@
             { id: 171218, title: { romaji: "Solo Leveling Season 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx171218-hD6orP3pY5Sg.jpg" }, bannerImage: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/171218-e3l3Wc9OQ0b3.jpg", averageScore: 87, episodes: 12, genres: ["Action", "Fantasy"], description: "The second season of Solo Leveling." },
             { id: 154587, title: { romaji: "Frieren: Beyond Journey's End" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx154587-g646ctZOfRow.jpg" }, averageScore: 93, episodes: 28, genres: ["Adventure", "Drama", "Fantasy"] },
             { id: 166873, title: { romaji: "Chainsaw Man Part 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx117002-9P6W0UvR37Y0.png" }, averageScore: 85, episodes: 12, genres: ["Action", "Gore"] },
-            { id: 21202, title: { romaji: "KonoSuba" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21202-T6I7pZIn9v6I.jpg" }, averageScor
+            { id: 21202, title: { romaji: "KonoSuba" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21202-T6I7pZIn9v6I.jpg" }, averageScore: 85, episodes: 11, genres: ["Comedy", "Fantasy"], description: "Kazuma Sato is a video game-loving shut-in whose life briefly comes to an end..." }
+        ];
+
+        // --- GraphQL Queries for AniList API ---
+        const TRENDING_Q = `query{Page(perPage:12){media(sort:TRENDING_DESC,type:ANIME){id title{romaji}coverImage{large}bannerImage averageScore episodes genres description}}}`;
+        const POPULAR_Q = `query{Page(perPage:12){media(sort:POPULARITY_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji}coverImage{large}averageScore episodes}}}`;
+        const TOP_Q = `query{Page(perPage:12){media(sort:SCORE_DESC,type:ANIME,status:FINISHED){id title{romaji}coverImage{large}averageScore episodes}}}`;
+        const SEARCH_Q = `query($s:String){Page(perPage:12){media(search:$s,type:ANIME){id title{romaji}coverImage{large}averageScore episodes}}}`;
+
+        // --- Core Application Logic ---
+        async function init() {
+          const [trendingData, popularData, topRatedData] = await Promise.all([
+            anilist(TRENDING_Q, {page:1}),
+            anilist(POPULAR_Q, {}),
+            anilist(TOP_Q, {})
+          ]).catch(err => {
+            console.warn("API fetch failed, falling back:", err);
+            return [null, null, null];
+          });
+
+          const tList = trendingData?.Page?.media || fallbackDatabase;
+          const pList = popularData?.Page?.media || fallbackDatabase;
+          const trList = topRatedData?.Page?.media || fallbackDatabase;
+
+          [...tList, ...pList, ...trList].forEach(item => {
+             if(item && item.id) animeStorage[item.id] = item;
+          });
+
+          if (tList && tList.length > 0) {
+            const h = tList[0];
+            if(document.getElementById('heroTitle')) document.getElementById('heroTitle').textContent = h.title?.romaji || 'Anime';
+            if(document.getElementById('heroScore')) document.getElementById('heroScore').textContent = h.averageScore ? (h.averageScore/10).toFixed(1) : '8.7';
+            if(document.getElementById('heroEps')) document.getElementById('heroEps').textContent = (h.episodes || '12') + ' Ep';
+            if(document.getElementById('heroGenre')) document.getElementById('heroGenre').textContent = (h.genres || ["Action", "Fantasy"]).slice(0,2).join(', ');
+            if(document.getElementById('heroDesc')) document.getElementById('heroDesc').textContent = (h.description || '').replace(/<[^>]*>/g,'').slice(0,140) || "Explore premium streaming titles on demand.";
+            if(h.bannerImage && document.getElementById('heroBg')) document.getElementById('heroBg').src = h.bannerImage;
+            
+            const watchBtn = document.getElementById('heroWatchBtn');
+            if (watchBtn) watchBtn.onclick = () => handleCardClick(h.id);
+          }
+
+          buildTrending(tList.length ? tList : fallbackDatabase);
+          buildGrid('popularGrid', pList.length ? pList : fallbackDatabase);
+          buildGrid('topRatedGrid', trList.length ? trList : fallbackDatabase);
+          checkUserSession();
+        }
+
+        async function anilist(query, variables) {
+          try {
+            const res = await fetch('https://graphql.anilist.co', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({ query, variables })
+            });
+            return await res.json().then(d => d.data);
+          } catch (e) { 
+            return null; 
+          }
+        }
+
+        function buildTrending(list) {
+          const container = document.getElementById('trendingGrid');
+          if(!container) return;
+          container.innerHTML = '';
+          list.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'anime-card';
+            card.onclick = () => handleCardClick(item.id);
+            card.innerHTML = `
+              <img src="${item.coverImage?.large || ''}" alt="">
+              <div class="anime-card-title">${item.title?.romaji || 'Untitled'}</div>
+            `;
+            container.appendChild(card);
+          });
+        }
+
+        function buildGrid(id, list) {
+          const container = document.getElementById(id);
+          if(!container) return;
+          container.innerHTML = '';
+          list.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'anime-card';
+            card.onclick = () => handleCardClick(item.id);
+            card.innerHTML = `
+              <img src="${item.coverImage?.large || ''}" alt="">
+              <div class="anime-card-title">${item.title?.romaji || 'Untitled'}</div>
+            `;
+            container.appendChild(card);
+          });
+        }
+
+        function handleCardClick(id) {
+          alert("Loading player for anime ID: " + id);
+        }
+
+        function checkUserSession() {
+          console.log("Session active");
+        }
+
+        // Start the app
+        window.addEventListener('DOMContentLoaded', init);
+      </script>
+    </body>
+    </html>
