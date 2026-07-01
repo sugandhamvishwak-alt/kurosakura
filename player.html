@@ -1,27 +1,729 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Watch Anime</title>
-    <style>
-        body { background: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        video { width: 90%; height: 70vh; border-radius: 8px; background: #000; }
-        .back-btn { margin-top: 20px; padding: 10px 20px; background: #e50914; color: white; border: none; cursor: pointer; text-decoration: none; border-radius: 5px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KuroSakura Player</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #000000;
+  --deep: #0a0008;
+  --card: #0f000d;
+  --elevated: #1a0018;
+  --sakura: #ffb7c5;
+  --sakura-deep: #e8789e;
+  --sakura-dim: #c85a82;
+  --sakura-glow: rgba(255,183,197,0.15);
+  --sakura-border: rgba(255,183,197,0.12);
+  --sakura-border2: rgba(255,183,197,0.25);
+  --petal: #ffd6e7;
+  --text: #fff0f5;
+  --text2: #c49aaa;
+  --text3: #7a4a5a;
+  --font-brand: 'Cinzel', serif;
+  --font-ui: 'Rajdhani', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+/* Falling petals background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255,183,197,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(200,90,130,0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:var(--void); }
+::-webkit-scrollbar-thumb { background:var(--elevated); border-radius:2px; }
+
+/* NAV */
+nav {
+  position: fixed;
+  top:0; left:0; right:0;
+  z-index: 100;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(0,0,0,0.96);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--sakura-border);
+}
+.nav-logo {
+  font-family: var(--font-brand);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+}
+.nav-logo span { color: var(--sakura); }
+.nav-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text2);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  text-decoration: none;
+}
+.nav-back:hover { color: var(--sakura); }
+
+/* LAYOUT */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  min-height: 100vh;
+  padding-top: 54px;
+}
+
+/* MAIN */
+.main { padding: 18px 20px; position: relative; z-index:1; }
+
+/* PLAYER */
+.player-box {
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 16/9;
+  position: relative;
+  border: 1px solid var(--sakura-border);
+  box-shadow: 0 0 60px rgba(255,183,197,0.08), 0 8px 40px rgba(0,0,0,0.9);
+}
+.player-box iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+.player-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: radial-gradient(ellipse at center, #1a0018 0%, #000 70%);
+  cursor: pointer;
+}
+.player-placeholder:hover .play-ring { box-shadow: 0 0 70px rgba(255,183,197,0.6); }
+.play-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sakura), var(--sakura-dim));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #000;
+  box-shadow: 0 0 40px rgba(255,183,197,0.4);
+  transition: all 0.25s;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+.play-hint {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text2);
+  letter-spacing: 1px;
+}
+.petal-deco {
+  font-size: 22px;
+  opacity: 0.4;
+  letter-spacing: 8px;
+}
+
+/* ANIME INFO */
+.anime-info { margin-top: 16px; }
+.anime-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.anime-title {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.ep-badge {
+  background: var(--sakura-glow);
+  border: 1px solid var(--sakura-border2);
+  color: var(--sakura);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  letter-spacing: 0.5px;
+}
+.anime-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.meta-score { color: #f4c430; font-weight: 700; }
+.meta-dot { color: var(--text3); }
+.meta-genre {
+  background: rgba(255,183,197,0.08);
+  border: 1px solid var(--sakura-border);
+  color: var(--text2);
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+/* ACTION BUTTONS */
+.action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.act-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--elevated);
+  border: 1px solid var(--sakura-border);
+  color: var(--text2);
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: var(--font-body);
+}
+.act-btn:hover { border-color: var(--sakura-border2); color: var(--sakura); background: var(--sakura-glow); }
+.act-btn.primary { background: linear-gradient(135deg, var(--sakura-dim), #a03060); border-color: var(--sakura-dim); color: #fff; }
+.act-btn.primary:hover { background: linear-gradient(135deg, var(--sakura), var(--sakura-dim)); }
+
+/* SERVER TABS */
+.server-section { margin-top: 4px; }
+.server-label {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 7px;
+  font-family: var(--font-ui);
+}
+.server-tabs { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+.stab {
+  background: var(--card);
+  border: 1px solid var(--sakura-border);
+  color: var(--text2);
+  padding: 6px 16px;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: var(--font-body);
+}
+.stab.active, .stab:hover {
+  background: var(--sakura-glow);
+  border-color: var(--sakura);
+  color: var(--sakura);
+}
+
+/* SIDEBAR */
+.sidebar {
+  border-left: 1px solid var(--sakura-border);
+  background: var(--deep);
+  overflow-y: auto;
+  max-height: calc(100vh - 54px);
+  position: sticky;
+  top: 54px;
+  z-index: 1;
+}
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--sakura-border);
+  position: sticky;
+  top: 0;
+  background: var(--deep);
+  z-index: 2;
+}
+.sidebar-title {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: var(--sakura);
+  border-radius: 2px;
+  display: block;
+}
+.ep-count-label { font-size: 11px; color: var(--text3); }
+.ep-search {
+  width: 100%;
+  background: var(--elevated);
+  border: 1px solid var(--sakura-border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font-body);
+  margin-top: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.ep-search:focus { border-color: var(--sakura); }
+.ep-search::placeholder { color: var(--text3); }
+
+/* EPISODE LIST */
+.ep-list { padding: 8px; }
+.ep-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.18s;
+  margin-bottom: 3px;
+}
+.ep-item:hover { background: var(--elevated); border-color: var(--sakura-border); }
+.ep-item.active {
+  background: var(--sakura-glow);
+  border-color: rgba(255,183,197,0.3);
+}
+.ep-item.filler { opacity: 0.55; }
+.ep-num {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text3);
+  min-width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.ep-item.active .ep-num { color: var(--sakura); }
+.ep-details { flex: 1; min-width: 0; }
+.ep-name {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+  color: var(--text);
+}
+.ep-item.filler .ep-name { color: var(--text3); }
+.ep-meta { display: flex; align-items: center; gap: 6px; }
+.ep-dur { font-size: 10px; color: var(--text3); }
+.filler-tag {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text3);
+  background: #0f000d;
+  border: 1px solid #2a1020;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+.watched-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sakura);
+  flex-shrink: 0;
+  opacity: 0;
+}
+.ep-item.watched .watched-dot { opacity: 1; }
+
+/* LOADING / ERROR */
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--sakura-border);
+  border-top-color: var(--sakura);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text3); }
+.error-wrap {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text2);
+}
+.error-wrap h3 { font-family:var(--font-ui); color:var(--sakura); margin-bottom:8px; }
+
+/* PETAL DIVIDER */
+.petal-divider {
+  text-align: center;
+  color: var(--sakura-border2);
+  font-size: 14px;
+  letter-spacing: 6px;
+  margin: 10px 0;
+  user-select: none;
+}
+
+/* RESPONSIVE */
+@media(max-width:768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    max-height: 320px;
+    border-left: none;
+    border-top: 1px solid var(--sakura-border);
+    position: static;
+  }
+  .main { padding: 12px 14px; }
+  .anime-title { font-size: 17px; }
+  nav { padding: 0 14px; }
+}
+</style>
 </head>
 <body>
 
-    <video id="videoPlayer" controls>
-        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="/">Kuro<span>Sakura</span></a>
+  <a class="nav-back" href="/">&#8592; Back to Browse</a>
+</nav>
 
-    <a href="index.html" class="back-btn">Go Back Home</a>
+<!-- LAYOUT -->
+<div class="layout">
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const animeId = params.get('id');
-        console.log("Loading Anime ID:", animeId);
-    </script>
-</body>
-</html>
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- Player -->
+    <div class="player-box" id="playerBox">
+      <div class="player-placeholder" id="placeholder" onclick="loadPlayer()">
+        <div class="petal-deco">&#x1F338; &#x1F338; &#x1F338;</div>
+        <div class="play-ring">&#9658;</div>
+        <div class="play-hint" id="playHint">Tap to Watch</div>
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="anime-info">
+      <div class="anime-title-row">
+        <div class="anime-title" id="animeTitle">Loading...</div>
+        <div class="ep-badge" id="epBadge">EP 1</div>
+      </div>
+      <div class="anime-meta" id="animeMeta">
+        <span class="loading-text">Fetching anime info...</span>
+      </div>
+      <div class="action-row">
+        <button class="act-btn primary" onclick="loadPlayer()">&#9658; Play Episode</button>
+        <button class="act-btn" onclick="toggleWatched()">&#10003; Mark Watched</button>
+        <button class="act-btn" onclick="shareEp()">&#8599; Share</button>
+        <button class="act-btn">&#65291; My List</button>
+      </div>
+
+      <!-- Servers -->
+      <div class="server-section">
+        <div class="server-label">&#x1F338; Sub Servers</div>
+        <div class="server-tabs">
+          <div class="stab active" onclick="setServer(this,'vidsrc',1)">VidSrc</div>
+          <div class="stab" onclick="setServer(this,'2embed',1)">2Embed</div>
+          <div class="stab" onclick="setServer(this,'anime',1)">AnimeHub</div>
+        </div>
+        <div class="server-label">&#x1F338; Dub Servers</div>
+        <div class="server-tabs">
+          <div class="stab" onclick="setServer(this,'vidsrc-dub',1)">VidSrc Dub</div>
+          <div class="stab" onclick="setServer(this,'2embed-dub',1)">2Embed Dub</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Episodes</div>
+      <div class="ep-count-label" id="epCountLabel">Loading...</div>
+      <input class="ep-search" type="text" placeholder="Search episodes..." oninput="filterEps(this.value)" id="epSearchInput">
+    </div>
+    <div class="ep-list" id="epList">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading episodes...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── CONFIG ───
+const FILLER_RANGES = {
+  // Naruto
+  21: [[136,220]],
+  // Naruto Shippuden
+  1735: [[57,70],[91,112],[144,151],[176,196],[223,242],[257,260],[271,278],[279,281],[376,389],[394,413],[416,417],[422,423],[427,457],[460,462],[464,469],[480,483]],
+  // Bleach
+  269: [[33,50],[64,109],[128,137],[147,149],[168,189],[204,205],[213,214],[228,229],[231,265],[287,297],[299,300],[303,305],[311,341],[355,361]],
+  // One Piece
+  21: [[54,60],[135,135],[196,206],[213,216],[220,226],[279,283],[291,292],[303,312],[317,319],[326,336],[382,384]],
+};
+
+// ─── STATE ───
+let animeId = null;
+let totalEps = 0;
+let currentEp = 1;
+let currentServer = 'vidsrc';
+let watchedEps = new Set();
+let allEpData = [];
+let animeData = null;
+
+// ─── INIT ───
+function init() {
+  const params = new URLSearchParams(window.location.search);
+  animeId = params.get('id');
+  const ep = params.get('ep');
+  if (ep) currentEp = parseInt(ep) || 1;
+
+  if (!animeId) {
+    showError('No anime ID provided. <a href="/" style="color:var(--sakura)">Go back home</a>');
+    return;
+  }
+  fetchAnime();
+}
+
+async function fetchAnime() {
+  try {
+    const query = `query($id:Int){Media(id:$id,type:ANIME){id title{romaji english}coverImage{large extraLarge}bannerImage averageScore episodes genres startDate{year}description(asHtml:false)status streamingEpisodes{title thumbnail}}}`;
+    const res = await fetch('https://graphql.anilist.co', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query, variables:{id:parseInt(animeId)}})
+    });
+    const json = await res.json();
+    animeData = json.data.Media;
+    if (!animeData) throw new Error('Anime not found');
+    renderInfo(animeData);
+    buildEpisodes(animeData);
+  } catch(e) {
+    showError('Could not load anime data. ' + e.message);
+  }
+}
+
+function renderInfo(a) {
+  const title = a.title.english || a.title.romaji;
+  document.title = title + ' — KuroSakura';
+  document.getElementById('animeTitle').textContent = title;
+
+  const score = a.averageScore ? (a.averageScore/10).toFixed(1) : '?';
+  const year = a.startDate?.year || '';
+  const genres = (a.genres||[]).slice(0,3);
+  document.getElementById('animeMeta').innerHTML = `
+    <span class="meta-score">&#9733; ${score}</span>
+    <span class="meta-dot">·</span>
+    <span>${year}</span>
+    <span class="meta-dot">·</span>
+    ${genres.map(g=>`<span class="meta-genre">${g}</span>`).join('')}
+  `;
+}
+
+function buildEpisodes(a) {
+  totalEps = a.episodes || 0;
+  const streamEps = a.streamingEpisodes || [];
+
+  // Build episode data array
+  allEpData = [];
+  const count = totalEps || streamEps.length || 24;
+  for (let i = 1; i <= count; i++) {
+    const stream = streamEps[i-1];
+    const isFiller = checkFiller(parseInt(animeId), i);
+    allEpData.push({
+      num: i,
+      title: stream?.title ? cleanEpTitle(stream.title) : `Episode ${i}`,
+      thumb: stream?.thumbnail || null,
+      filler: isFiller
+    });
+  }
+
+  document.getElementById('epCountLabel').textContent = count + ' episodes';
+  renderEpList(allEpData);
+  updateEpBadge();
+}
+
+function checkFiller(id, ep) {
+  const ranges = FILLER_RANGES[id];
+  if (!ranges) return false;
+  return ranges.some(([s,e]) => ep >= s && ep <= e);
+}
+
+function cleanEpTitle(t) {
+  return t.replace(/^Episode \d+\s*[-:]\s*/i,'').trim() || t;
+}
+
+function renderEpList(eps) {
+  const list = document.getElementById('epList');
+  if (!eps.length) {
+    list.innerHTML = '<div class="error-wrap"><p>No episodes found.</p></div>';
+    return;
+  }
+
+  // Add petal dividers every 25 episodes
+  let html = '';
+  eps.forEach((ep, idx) => {
+    if (idx > 0 && ep.num % 25 === 1) {
+      html += `<div class="petal-divider">· · &#x1F338; · ·</div>`;
+    }
+    const isActive = ep.num === currentEp;
+    const isWatched = watchedEps.has(ep.num);
+    html += `
+      <div class="ep-item ${ep.filler?'filler':''} ${isActive?'active':''} ${isWatched?'watched':''}"
+           id="ep-${ep.num}"
+           onclick="selectEp(${ep.num})">
+        <div class="ep-num">${ep.num}</div>
+        <div class="ep-details">
+          <div class="ep-name">${ep.title}</div>
+          <div class="ep-meta">
+            <span class="ep-dur">23 min</span>
+            ${ep.filler ? '<span class="filler-tag">FILLER</span>' : ''}
+          </div>
+        </div>
+        <div class="watched-dot"></div>
+      </div>`;
+  });
+  list.innerHTML = html;
+  scrollToActive();
+}
+
+function filterEps(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) { renderEpList(allEpData); return; }
+  const filtered = allEpData.filter(ep =>
+    ep.title.toLowerCase().includes(q) ||
+    ep.num.toString().includes(q)
+  );
+  renderEpList(filtered);
+}
+
+function scrollToActive() {
+  setTimeout(() => {
+    const active = document.getElementById('ep-' + currentEp);
+    if (active) active.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
+}
+
+function selectEp(n) {
+  currentEp = n;
+  updateEpBadge();
+  // Update active state
+  document.querySelectorAll('.ep-item').forEach(e => e.classList.remove('active'));
+  const el = document.getElementById('ep-' + n);
+  if (el) { el.classList.add('active'); el.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+  // Update URL without reload
+  const url = new URL(window.location);
+  url.searchParams.set('ep', n);
+  history.pushState({}, '', url);
+  // Load player or reset placeholder
+  if (document.getElementById('playerBox').querySelector('iframe')) {
+    loadPlayer();
+  } else {
+    document.getElementById('playHint').textContent = 'Tap to watch Episode ' + n;
+  }
+  // Scroll player into view on mobile
+  document.getElementById('playerBox').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function updateEpBadge() {
+  const ep = allEpData.find(e => e.num === currentEp);
+  document.getElementById('epBadge').textContent = 'EP ' + currentEp;
+  if (ep && ep.title !== 'Episode ' + currentEp) {
+    document.getElementById('epBadge').title = ep.title;
+  }
+}
+
+function loadPlayer() {
+  const src = getStreamUrl();
+  document.getElementById('playerBox').innerHTML = `
+    <iframe src="${src}"
+      allowfullscreen
+      allow="autoplay; fullscreen; picture-in-picture"
+      referrerpolicy="no-referrer">
+    </iframe>`;
+  // Mark as watched
+  watchedEps.add(currentEp);
+  const el = document.getElementById('ep-' + currentEp);
+  if (el) el.classList.add('watched');
+}
+
+function getStreamUrl() {
+  switch(currentServer) {
+    case 'vidsrc':
+      return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}`;
+    case '2embed':
+      return `https://www.2embed.cc/embedanime/${animeId}/${currentEp}`;
+    case 'anime':
+      return `https://vidsrc.to/embed/anime/${animeId}/${currentEp}`;
+    case 'vidsrc-dub':
+      return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}/dub`;
+    case '2embed-dub':
+      return `https://www.2embed.cc/embedanime/${animeId}/${currentEp}/dub`;
+    default:
+      return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}`;
+  }
+}
+
+function setServer(el, server, num) {
+  el.parentElement.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentServer = server;
+  if (document.getElementById('playerBox').querySelector('iframe')) loadPlayer();
+}
+
+function toggleWatched() {
+  if (watchedEps.has(currentEp)) {
+    watchedEps.delete(currentEp);
+    const el = document.getElementById('ep-' + currentEp);
+    if (el) el.classList.remove('watched');
+  } else {
+    watchedEps.add(currentEp);
+    const el = document.getElementById('ep-' + currentEp);
+    if (el) el.classList.add('watched');
+  }
+}
+
+f
