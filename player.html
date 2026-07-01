@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Watch Anime</title>
+    <style>
+        body { background: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        iframe { width: 90%; height: 70vh; border: none; border-radius: 8px; }
+        .back-btn { margin-top: 20px; padding: 10px 20px; background: #e50914; color: white; border: none; cursor: pointer; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <iframe id="videoPlayer" src="" allowfullscreen></iframe>
+    <a href="index.html" class="back-btn">Go Back Home</a>
+
+    <script>
+        // 1. Grab the ID from the URL (e.g., player.html?id=12345)
+        const params = new URLSearchParams(window.location.search);
+        const animeId = params.get('id');
+
+        // 2. Load the anime stream into the iframe
+        if (animeId) {
+            document.getElementById('videoPlayer').src = `https://vidsrc.xyz/embed/anime?id=${animeId}`;
+        }
+    </script>
+</body>
+</html>
