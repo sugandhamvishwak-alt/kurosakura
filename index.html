@@ -141,6 +141,7 @@
         </div>
     </header>
 
+    <!-- AUTH MODAL -->
     <div class="modal" id="authModal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeAuthModal()">&times;</span>
@@ -164,6 +165,7 @@
         </div>
     </div>
 
+    <!-- HOME PAGE -->
     <main id="home-page" class="page active">
         <div class="hero">
             <img src="" alt="" class="hero-bg" id="heroBg">
@@ -227,6 +229,7 @@
         <div class="anime-grid" id="topRatedGrid"><div class="spinner"></div></div>
     </main>
 
+    <!-- WATCHLIST PAGE -->
     <main id="watchlist-page" class="page">
         <h2 class="section-title">My Bookmarked Anime</h2>
         <div class="anime-grid" id="watchlistGrid">
@@ -234,6 +237,7 @@
         </div>
     </main>
 
+    <!-- WATCH PAGE -->
     <div id="watch-page" class="page">
         <div class="watch-container">
             <div class="main-player-side">
@@ -268,34 +272,29 @@
         let currentEp = 1;
         let isSignUpMode = false;
         let savedAnimeList = JSON.parse(localStorage.getItem('kuro_watchlist')) || [];
+        
+        // Global memory lookup to store media data without messing up HTML strings
+        const animeStorage = {};
 
-        // Uses an open CORS proxy to safely fetch AniList content inside Vercel environments
         async function anilist(query, vars) {
           try {
-            const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://graphql.anilist.co'), {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({query, variables: vars})
+            const r = await fetch('https://graphql.anilist.co', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({ query, variables: vars })
             });
-            const wrapper = await r.json();
-            const json = JSON.parse(wrapper.contents);
+            const json = await r.json();
             return json.data;
           } catch(e) {
-            // Fallback strategy if proxy fails
-            try {
-               const r = await fetch('https://graphql.anilist.co', {
-                 method:'POST',
-                 headers:{'Content-Type':'application/json','Accept':'application/json'},
-                 body: JSON.stringify({query, variables: vars})
-               });
-               const json = await r.json();
-               return json.data;
-            } catch(err) {
-               console.error("API Proxy & Direct Fetch failed", err);
-               return null;
-            }
+            console.error("AniList API connection error", e);
+            return null;
           }
         }
 
         const TRENDING_Q = `query($page:Int){Page(page:$page,perPage:10){media(sort:TRENDING_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji}coverImage{large}bannerImage averageScore episodes genres description}}}`;
-        const POPULAR_Q = `query{Page(perPage:12){media(sort:POPULARITY_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji}coverImage{large}average
+        const POPULAR_Q = `query{Page(perPage:12){media(sort:POPULARITY_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji}coverImage{large}averageScore episodes}}}`;
+        const TOP_Q = `query{Page(perPage:12){media(sort:SCORE_DESC,type:ANIME,status:FINISHED){id title{romaji}coverImage{large}averageScore episodes}}}`;
+        const SEARCH_Q = `query($s:String){Page(perPage:12){media(search:$s,type:ANIME){id title{romaji}coverImage{large}averageScore episodes}}}`;
+
+        async function init() {
+          const trending = await anilist(TRENDING_Q, {page:1})
