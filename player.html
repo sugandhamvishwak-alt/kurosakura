@@ -461,14 +461,15 @@ nav {
       <div class="server-section">
         <div class="server-label">&#x1F338; Sub Servers</div>
         <div class="server-tabs">
-          <div class="stab active" onclick="setServer(this,'vidsrc',1)">VidSrc</div>
-          <div class="stab" onclick="setServer(this,'2embed',1)">2Embed</div>
-          <div class="stab" onclick="setServer(this,'anime',1)">AnimeHub</div>
+          <div class="stab active" onclick="setServer(this,'vidsrcxyz',1)">VidSrc</div>
+          <div class="stab" onclick="setServer(this,'vidsrcpro',1)">VidSrc Pro</div>
+          <div class="stab" onclick="setServer(this,'vidstreaming',1)">VidStreaming</div>
+          <div class="stab" onclick="setServer(this,'gogoanime',1)">GogoAnime</div>
         </div>
         <div class="server-label">&#x1F338; Dub Servers</div>
         <div class="server-tabs">
-          <div class="stab" onclick="setServer(this,'vidsrc-dub',1)">VidSrc Dub</div>
-          <div class="stab" onclick="setServer(this,'2embed-dub',1)">2Embed Dub</div>
+          <div class="stab" onclick="setServer(this,'vidsrcxyz-dub',1)">VidSrc Dub</div>
+          <div class="stab" onclick="setServer(this,'vidsrcpro-dub',1)">VidSrc Pro Dub</div>
         </div>
       </div>
     </div>
@@ -509,7 +510,7 @@ const FILLER_RANGES = {
 let animeId = null;
 let totalEps = 0;
 let currentEp = 1;
-let currentServer = 'vidsrc';
+let currentServer = 'vidsrcxyz';
 let watchedEps = new Set();
 let allEpData = [];
 let animeData = null;
@@ -692,18 +693,20 @@ function loadPlayer() {
 
 function getStreamUrl() {
   switch(currentServer) {
-    case 'vidsrc':
-      return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}`;
-    case '2embed':
-      return `https://www.2embed.cc/embedanime/${animeId}/${currentEp}`;
-    case 'anime':
-      return `https://vidsrc.to/embed/anime/${animeId}/${currentEp}`;
-    case 'vidsrc-dub':
-      return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}/dub`;
-    case '2embed-dub':
-      return `https://www.2embed.cc/embedanime/${animeId}/${currentEp}/dub`;
+    case 'vidsrcxyz':
+      return `https://vidsrc.xyz/embed/anime?id=${animeId}&episode=${currentEp}`;
+    case 'vidsrcpro':
+      return `https://vidsrc.pro/embed/anime/${animeId}/${currentEp}`;
+    case 'vidstreaming':
+      return `https://vidstreaming.io/streaming.php?id=${animeId}&episode=${currentEp}`;
+    case 'gogoanime':
+      return `https://gogoanime3.cc/category/${animeId}-episode-${currentEp}`;
+    case 'vidsrcxyz-dub':
+      return `https://vidsrc.xyz/embed/anime?id=${animeId}&episode=${currentEp}&dubbing=english`;
+    case 'vidsrcpro-dub':
+      return `https://vidsrc.pro/embed/anime/${animeId}/${currentEp}/dub`;
     default:
-      return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}`;
+      return `https://vidsrc.xyz/embed/anime?id=${animeId}&episode=${currentEp}`;
   }
 }
 
@@ -715,33 +718,4 @@ function setServer(el, server, num) {
 }
 
 function toggleWatched() {
-  if (watchedEps.has(currentEp)) {
-    watchedEps.delete(currentEp);
-    const el = document.getElementById('ep-' + currentEp);
-    if (el) el.classList.remove('watched');
-  } else {
-    watchedEps.add(currentEp);
-    const el = document.getElementById('ep-' + currentEp);
-    if (el) el.classList.add('watched');
-  }
-}
-
-function shareEp() {
-  const url = window.location.href;
-  if (navigator.share) {
-    navigator.share({title: document.title, url});
-  } else {
-    navigator.clipboard?.writeText(url);
-    alert('Link copied!');
-  }
-}
-
-function showError(msg) {
-  document.getElementById('epList').innerHTML = `<div class="error-wrap"><h3>Oops</h3><p>${msg}</p></div>`;
-  document.getElementById('animeTitle').textContent = 'Error';
-}
-
-init();
-</script>
-</body>
-</html>
+  if (watchedEps.has(
