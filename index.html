@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+        <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -71,6 +71,7 @@
         
         .anime-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-bottom: 40px; }
         .anime-card { background: var(--surface); border-radius: 8px; overflow: hidden; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: 0.3s; display: flex; flex-direction: column; }
+        .anime-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(255,74,90,0.3); }
         .card-thumb { position: relative; aspect-ratio: 140/190; background: #151a22; }
         .card-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .card-badge { position: absolute; top: 8px; left: 8px; background: var(--primary); color: #fff; font-size: 9px; font-weight: bold; padding: 2px 5px; border-radius: 3px; }
@@ -196,32 +197,16 @@
         </div>
 
         <h2 class="section-title" id="catalogHeader">Trending This Season</h2>
-        <div class="trending-row" id="trendingRow"><div class="spinner"></div></div>
+        <div class="anime-grid" id="trendingGrid"><div class="spinner"></div></div>
 
         <h2 class="section-title">Popular Right Now</h2>
         <div class="anime-grid" id="popularGrid"><div class="spinner"></div></div>
 
         <h2 class="section-title">Airing Schedule</h2>
-        <div class="schedule-grid">
-            <div class="sched-day-box">
-                <div class="sched-day-title">Wednesday</div>
-                <div class="sched-list">
-                    <div class="sched-item"><span>Re:ZERO Season 3</span><span class="sched-time">21:00</span></div>
-                    <div class="sched-item"><span>The Eminence in Shadow</span><span class="sched-time">22:30</span></div>
-                </div>
-            </div>
-            <div class="sched-day-box">
-                <div class="sched-day-title">Friday</div>
-                <div class="sched-list">
-                    <div class="sched-item"><span>Chainsaw Man</span><span class="sched-time">18:00</span></div>
-                    <div class="sched-item"><span>Spy x Family</span><span class="sched-time">23:00</span></div>
-                </div>
-            </div>
-            <div class="sched-day-box">
-                <div class="sched-day-title">Saturday</div>
-                <div class="sched-list">
-                    <div class="sched-item"><span>Demon Slayer</span><span class="sched-time">21:15</span></div>
-                </div>
+        <div class="schedule-grid" id="scheduleGrid">
+            <div style="grid-column:1/-1; text-align:center; padding:20px;">
+                <div class="spinner"></div>
+                <p style="margin-top:10px; color:var(--text);">Loading schedule...</p>
             </div>
         </div>
 
@@ -237,32 +222,6 @@
         </div>
     </main>
 
-    <!-- WATCH PAGE -->
-    <div id="watch-page" class="page">
-        <div class="watch-container">
-            <div class="main-player-side">
-                <div class="player-wrapper" id="playerWrap"></div>
-                <div class="server-container">
-                    <div class="server-grid">
-                        <div class="server-tab active">VidSrc (Main Server)</div>
-                    </div>
-                </div>
-                <div class="anime-detail-info">
-                    <h1 class="watch-title" id="watchTitle">Anime Title</h1>
-                    <div class="watch-ep-title" id="watchEpTitle">Episode 1</div>
-                    <div class="watch-tags" id="watchTags"></div>
-                    <div class="watch-actions">
-                        <button class="action-btn" id="saveListBtn" onclick="toggleWatchlist()">❤ Save to List</button>
-                        <button class="action-btn" id="downloadBtn" onclick="triggerDownload()" style="background: var(--surface);">📥 Download Episode</button>
-                    </div>
-                </div>
-            </div>
-            <div class="episodes-side">
-                <div class="ep-list" id="epList"></div>
-            </div>
-        </div>
-    </div>
-
     <footer class="footer">
         <p>Kuro<span>Sakura</span> · Anime Streaming · 2026</p>
     </footer>
@@ -274,111 +233,297 @@
         let savedAnimeList = JSON.parse(localStorage.getItem('kuro_watchlist')) || [];
         const animeStorage = {};
 
-        // Fallback offline database to ensure the layout is NEVER empty or frozen
+        // Fallback offline database
         const fallbackDatabase = [
-            { id: 171218, title: { romaji: "Solo Leveling Season 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx171218-hD6orP3pY5Sg.jpg" }, bannerImage: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/171218-e3l3Wc9OQ0b3.jpg", averageScore: 87, episodes: 12, genres: ["Action", "Fantasy"], description: "The second season of Solo Leveling." },
-            { id: 154587, title: { romaji: "Frieren: Beyond Journey's End" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx154587-g646ctZOfRow.jpg" }, averageScore: 93, episodes: 28, genres: ["Adventure", "Drama", "Fantasy"] },
-            { id: 166873, title: { romaji: "Chainsaw Man Part 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx117002-9P6W0UvR37Y0.png" }, averageScore: 85, episodes: 12, genres: ["Action", "Gore"] },
-                        { id: 21202, title: { romaji: "KonoSuba" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21202-T6I7pZIn9v6I.jpg" }, averageScore: 85, episodes: 11, genres: ["Comedy", "Fantasy"], description: "Kazuma Sato is a video game-loving shut-in whose life briefly comes to an end..." }
+            { id: 171218, title: { romaji: "Solo Leveling Season 2", english: "Solo Leveling Season 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx171218-hD6orP3pY5Sg.jpg" }, bannerImage: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/171218-e3l3Wc9OQ0b3.jpg", averageScore: 87, episodes: 12, genres: ["Action", "Fantasy"], description: "The second season of Solo Leveling." },
+            { id: 154587, title: { romaji: "Frieren: Beyond Journey's End", english: "Frieren: Beyond Journey's End" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx154587-g646ctZOfRow.jpg" }, bannerImage: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587.jpg", averageScore: 93, episodes: 28, genres: ["Adventure", "Drama", "Fantasy"], description: "Frieren embarks on a new adventure." },
+            { id: 166873, title: { romaji: "Chainsaw Man Part 2", english: "Chainsaw Man Part 2" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx117002-9P6W0UvR37Y0.png" }, averageScore: 85, episodes: 12, genres: ["Action", "Gore", "Supernatural"] },
+            { id: 21202, title: { romaji: "KonoSuba", english: "KonoSuba" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21202-T6I7pZIn9v6I.jpg" }, averageScore: 85, episodes: 11, genres: ["Comedy", "Fantasy"], description: "Kazuma Sato is a video game-loving shut-in." },
+            { id: 1, title: { romaji: "Cowboy Bebop", english: "Cowboy Bebop" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b1-RMdfW90.jpg" }, averageScore: 88, episodes: 26, genres: ["Action", "Sci-Fi", "Drama"] },
+            { id: 5, title: { romaji: "Fullmetal Alchemist", english: "Fullmetal Alchemist" }, coverImage: { large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b5-LLEDWp.jpg" }, averageScore: 88, episodes: 51, genres: ["Action", "Adventure", "Fantasy"] }
         ];
 
+        // GraphQL Queries for AniList API
+        const TRENDING_Q = `query{Page(perPage:12){media(sort:TRENDING_DESC,type:ANIME){id title{romaji english}coverImage{large}bannerImage averageScore episodes genres description}}}`;
+        const POPULAR_Q = `query{Page(perPage:12){media(sort:POPULARITY_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji english}coverImage{large}averageScore episodes genres}}}`;
+        const TOP_Q = `query{Page(perPage:12){media(sort:SCORE_DESC,type:ANIME,status:FINISHED){id title{romaji english}coverImage{large}averageScore episodes genres}}}`;
+        const SEARCH_Q = `query($s:String){Page(perPage:12){media(search:$s,type:ANIME){id title{romaji english}coverImage{large}averageScore episodes}}}`;
+        const AIRING_Q = `query{Page(perPage:50){airingSchedules(sort:TIME){media{id title{romaji english}episodes}episode airingAt}}}`;
 
-        // --- GraphQL Queries for AniList API ---
-        const TRENDING_Q = `query{Page(perPage:12){media(sort:TRENDING_DESC,type:ANIME){id title{romaji}coverImage{large}bannerImage averageScore episodes genres description}}}`;
-        const POPULAR_Q = `query{Page(perPage:12){media(sort:POPULARITY_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji}coverImage{large}averageScore episodes}}}`;
-        const TOP_Q = `query{Page(perPage:12){media(sort:SCORE_DESC,type:ANIME,status:FINISHED){id title{romaji}coverImage{large}averageScore episodes}}}`;
-        const SEARCH_Q = `query($s:String){Page(perPage:12){media(search:$s,type:ANIME){id title{romaji}coverImage{large}averageScore episodes}}}`;
-
-        // --- Core Application Logic ---
+        // Core Application Logic
         async function init() {
-          const [trendingData, popularData, topRatedData] = await Promise.all([
-            anilist(TRENDING_Q, {page:1}),
-            anilist(POPULAR_Q, {}),
-            anilist(TOP_Q, {})
-          ]).catch(err => {
-            console.warn("API fetch failed, falling back:", err);
-            return [null, null, null];
-          });
+            try {
+                // Set timeout for API calls (5 seconds max)
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('API timeout')), 5000)
+                );
 
-          const tList = trendingData?.Page?.media || fallbackDatabase;
-          const pList = popularData?.Page?.media || fallbackDatabase;
-          const trList = topRatedData?.Page?.media || fallbackDatabase;
+                const trendingPromise = Promise.race([
+                    anilist(TRENDING_Q, {}),
+                    timeoutPromise
+                ]).catch(err => {
+                    console.warn("Trending API failed, using fallback");
+                    return null;
+                });
 
-          [...tList, ...pList, ...trList].forEach(item => {
-             if(item && item.id) animeStorage[item.id] = item;
-          });
+                const popularPromise = Promise.race([
+                    anilist(POPULAR_Q, {}),
+                    timeoutPromise
+                ]).catch(err => {
+                    console.warn("Popular API failed, using fallback");
+                    return null;
+                });
 
-          if (tList && tList.length > 0) {
-            const h = tList[0];
-            if(document.getElementById('heroTitle')) document.getElementById('heroTitle').textContent = h.title?.romaji || 'Anime';
-            if(document.getElementById('heroScore')) document.getElementById('heroScore').textContent = h.averageScore ? (h.averageScore/10).toFixed(1) : '8.7';
-            if(document.getElementById('heroEps')) document.getElementById('heroEps').textContent = (h.episodes || '12') + ' Ep';
-            if(document.getElementById('heroGenre')) document.getElementById('heroGenre').textContent = (h.genres || ["Action", "Fantasy"]).slice(0,2).join(', ');
-            if(document.getElementById('heroDesc')) document.getElementById('heroDesc').textContent = (h.description || '').replace(/<[^>]*>/g,'').slice(0,140) || "Explore premium streaming titles on demand.";
-            if(h.bannerImage && document.getElementById('heroBg')) document.getElementById('heroBg').src = h.bannerImage;
-            
-            const watchBtn = document.getElementById('heroWatchBtn');
-            if (watchBtn) watchBtn.onclick = () => handleCardClick(h.id);
-          }
+                const topRatedPromise = Promise.race([
+                    anilist(TOP_Q, {}),
+                    timeoutPromise
+                ]).catch(err => {
+                    console.warn("Top Rated API failed, using fallback");
+                    return null;
+                });
 
-                   buildGrid('trendingGrid', tList.length ? tList : fallbackDatabase);
-          buildGrid('popularGrid', pList.length ? pList : fallbackDatabase);
-          buildGrid('topRatedGrid', trList.length ? trList : fallbackDatabase);
-          checkUserSession();
+                const [trendingData, popularData, topRatedData] = await Promise.all([
+                    trendingPromise,
+                    popularPromise,
+                    topRatedPromise
+                ]);
+
+                const tList = trendingData?.Page?.media || fallbackDatabase;
+                const pList = popularData?.Page?.media || fallbackDatabase;
+                const trList = topRatedData?.Page?.media || fallbackDatabase;
+
+                [...tList, ...pList, ...trList].forEach(item => {
+                    if(item && item.id) animeStorage[item.id] = item;
+                });
+
+                // Update hero section
+                if (tList && tList.length > 0) {
+                    const h = tList[0];
+                    document.getElementById('heroTitle').textContent = h.title?.english || h.title?.romaji || 'Anime';
+                    document.getElementById('heroScore').textContent = h.averageScore ? (h.averageScore/10).toFixed(1) : '8.7';
+                    document.getElementById('heroEps').textContent = (h.episodes || '12') + ' Ep';
+                    document.getElementById('heroGenre').textContent = (h.genres || ["Action", "Fantasy"]).slice(0,2).join(', ');
+                    document.getElementById('heroDesc').textContent = (h.description || '').replace(/<[^>]*>/g,'').slice(0,140) || "Explore premium streaming titles on demand.";
+                    if(h.bannerImage) document.getElementById('heroBg').src = h.bannerImage;
+                    
+                    const watchBtn = document.getElementById('heroWatchBtn');
+                    if (watchBtn) watchBtn.onclick = () => handleCardClick(h.id);
+                }
+
+                buildGrid('trendingGrid', tList.length ? tList : fallbackDatabase);
+                buildGrid('popularGrid', pList.length ? pList : fallbackDatabase);
+                buildGrid('topRatedGrid', trList.length ? trList : fallbackDatabase);
+
+                loadAiringSchedule();
+                checkUserSession();
+            } catch(e) {
+                console.error('Init failed:', e);
+                buildGrid('trendingGrid', fallbackDatabase);
+                buildGrid('popularGrid', fallbackDatabase);
+                buildGrid('topRatedGrid', fallbackDatabase);
+            }
         }
-
 
         async function anilist(query, variables) {
-          try {
-            const res = await fetch('https://graphql.anilist.co', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-              body: JSON.stringify({ query, variables })
-            });
-            return await res.json().then(d => d.data);
-          } catch (e) { 
-            return null; 
-          }
+            try {
+                const res = await fetch('https://graphql.anilist.co', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ query, variables })
+                });
+                const data = await res.json();
+                return data.data;
+            } catch (e) { 
+                console.error('AniList fetch error:', e);
+                return null; 
+            }
         }
 
-        function buildTrending(list) {
-          const container = document.getElementById('trendingGrid');
-          if(!container) return;
-          container.innerHTML = '';
-          list.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'anime-card';
-            card.onclick = () => handleCardClick(item.id);
-            card.innerHTML = `
-              <img src="${item.coverImage?.large || ''}" alt="">
-              <div class="anime-card-title">${item.title?.romaji || 'Untitled'}</div>
-            `;
-            container.appendChild(card);
-          });
+        async function loadAiringSchedule() {
+            try {
+                const query = `query{Page(perPage:30){airingSchedules(sort:TIME){media{id title{romaji english}episodes}episode airingAt}}}`;
+                
+                const data = await Promise.race([
+                    anilist(query, {}),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+                ]);
+
+                if (!data || !data.Page || !data.Page.airingSchedules) {
+                    throw new Error('No schedule data');
+                }
+
+                const schedules = data.Page.airingSchedules || [];
+                const dayMap = {};
+                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                
+                schedules.forEach(schedule => {
+                    const date = new Date(schedule.airingAt * 1000);
+                    const day = daysOfWeek[date.getDay()];
+                    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit' });
+                    
+                    if (!dayMap[day]) dayMap[day] = [];
+                    dayMap[day].push({
+                        title: schedule.media.title.english || schedule.media.title.romaji,
+                        time: time,
+                        episode: schedule.episode
+                    });
+                });
+                
+                const scheduleContainer = document.getElementById('scheduleGrid');
+                if (scheduleContainer && Object.keys(dayMap).length > 0) {
+                    scheduleContainer.innerHTML = Object.entries(dayMap).slice(0, 3).map(([day, items]) => `
+                        <div class="sched-day-box">
+                            <div class="sched-day-title">${day}</div>
+                            <div class="sched-list">
+                                ${items.slice(0, 3).map(item => `
+                                    <div class="sched-item">
+                                        <span>${item.title}</span>
+                                        <span class="sched-time">${item.time}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) {
+                console.warn('Schedule loading failed, using defaults:', e);
+                const scheduleContainer = document.getElementById('scheduleGrid');
+                if (scheduleContainer) {
+                    scheduleContainer.innerHTML = `
+                        <div class="sched-day-box">
+                            <div class="sched-day-title">Wednesday</div>
+                            <div class="sched-list">
+                                <div class="sched-item"><span>Re:ZERO Season 3</span><span class="sched-time">21:00</span></div>
+                                <div class="sched-item"><span>The Eminence in Shadow</span><span class="sched-time">22:30</span></div>
+                            </div>
+                        </div>
+                        <div class="sched-day-box">
+                            <div class="sched-day-title">Friday</div>
+                            <div class="sched-list">
+                                <div class="sched-item"><span>Chainsaw Man</span><span class="sched-time">18:00</span></div>
+                                <div class="sched-item"><span>Spy x Family</span><span class="sched-time">23:00</span></div>
+                            </div>
+                        </div>
+                        <div class="sched-day-box">
+                            <div class="sched-day-title">Saturday</div>
+                            <div class="sched-list">
+                                <div class="sched-item"><span>Demon Slayer</span><span class="sched-time">21:15</span></div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
         }
 
         function buildGrid(id, list) {
-          const container = document.getElementById(id);
-          if(!container) return;
-          container.innerHTML = '';
-          list.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'anime-card';
-            card.onclick = () => handleCardClick(item.id);
-            card.innerHTML = `
-              <img src="${item.coverImage?.large || ''}" alt="">
-              <div class="anime-card-title">${item.title?.romaji || 'Untitled'}</div>
-            `;
-            container.appendChild(card);
-          });
+            const container = document.getElementById(id);
+            if(!container) return;
+            container.innerHTML = '';
+            list.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'anime-card';
+                card.onclick = () => handleCardClick(item.id);
+                const score = item.averageScore ? (item.averageScore / 10).toFixed(1) : 'N/A';
+                card.innerHTML = `
+                    <div class="card-thumb">
+                        <img src="${item.coverImage?.large || ''}" alt="" onerror="this.src='https://via.placeholder.com/140x190?text=No+Image'">
+                        <div class="card-score">★ ${score}</div>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">${item.title?.english || item.title?.romaji || 'Untitled'}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
         function handleCardClick(id) {
-  window.location.href = `player.html?id=${id}`;
-}
+            window.location.href = `player.html?id=${id}`;
+        }
 
-        // Start the app
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(page + '-page').classList.add('active');
+            
+            document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+            if (page === 'home') document.getElementById('homeNavBtn').classList.add('active');
+            if (page === 'watchlist') document.getElementById('watchlistNavBtn').classList.add('active');
+
+            if (page === 'watchlist') {
+                buildGrid('watchlistGrid', savedAnimeList.map(id => animeStorage[id]).filter(a => a));
+            }
+        }
+
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById('modalTitle').textContent = isSignUpMode ? 'Sign Up' : 'Sign In';
+            document.getElementById('userField').style.display = isSignUpMode ? 'block' : 'none';
+            document.getElementById('authSubmitBtn').textContent = isSignUpMode ? 'Create Account' : 'Login';
+            document.getElementById('switchAuthText').innerHTML = isSignUpMode ? 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>' : 'Don\'t have an account? <span onclick="toggleAuthMode()">Sign Up</span>';
+        }
+
+        function handleAuth(event) {
+            event.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const username = document.getElementById('authUsername').value;
+            
+            if (isSignUpMode && !username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            // Simulate authentication
+            localStorage.setItem('kuro_user', JSON.stringify({
+                email: email,
+                username: username || email.split('@')[0],
+                loggedIn: true
+            }));
+
+            closeAuthModal();
+            checkUserSession();
+            alert('Login successful!');
+        }
+
+        function logout() {
+            localStorage.removeItem('kuro_user');
+            checkUserSession();
+        }
+
+        function checkUserSession() {
+            const user = JSON.parse(localStorage.getItem('kuro_user'));
+            if (user && user.loggedIn) {
+                document.getElementById('authBtn').style.display = 'none';
+                document.getElementById('userProfile').style.display = 'flex';
+                document.getElementById('userName').textContent = user.username;
+                document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+            } else {
+                document.getElementById('authBtn').style.display = 'block';
+                document.getElementById('userProfile').style.display = 'none';
+            }
+        }
+
+        function filterGenre(el, genre) {
+            document.querySelectorAll('.genre-pill').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            // Implement genre filtering here
+        }
+
+        function doSearch() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return;
+            alert('Search for: ' + query);
+        }
+
+        // Initialize on page load
         window.addEventListener('DOMContentLoaded', init);
-      </script>
-    </body>
-    </html>
+    </script>
+</body>
+</html>
