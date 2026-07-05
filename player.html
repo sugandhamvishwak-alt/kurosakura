@@ -233,6 +233,77 @@ nav {
   color: var(--primary);
 }
 
+.download-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.8);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+}
+.download-modal.active { display: flex; }
+.download-content {
+  background: var(--card);
+  border: 1px solid rgba(255,74,90,0.3);
+  border-radius: 12px;
+  padding: 25px;
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+}
+.download-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 22px;
+  background: none;
+  border: none;
+}
+.download-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 15px;
+  font-family: 'Rajdhani', sans-serif;
+}
+.download-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.download-option {
+  background: var(--elevated);
+  border: 1px solid rgba(255,74,90,0.2);
+  padding: 12px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+}
+.download-option:hover {
+  background: rgba(255,74,90,0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.download-warning {
+  font-size: 11px;
+  color: var(--text);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,74,90,0.2);
+  line-height: 1.5;
+}
+
 .sidebar {
   border-left: 1px solid rgba(255,74,90,0.2);
   background: var(--deep);
@@ -425,7 +496,7 @@ nav {
         <button class="act-btn primary" onclick="loadPlayer()">▶ Play Episode</button>
         <button class="act-btn" onclick="toggleWatched()">✓ Mark Watched</button>
         <button class="act-btn" onclick="shareEp()">↗ Share</button>
-        <button class="act-btn">✚ My List</button>
+        <button class="act-btn" onclick="openDownloadModal()">📥 Download</button>
       </div>
 
       <div class="server-section">
@@ -460,6 +531,31 @@ nav {
     </div>
   </div>
 
+</div>
+
+<!-- Download Modal -->
+<div class="download-modal" id="downloadModal">
+  <div class="download-content">
+    <button class="download-close" onclick="closeDownloadModal()">✕</button>
+    <div class="download-title">Download Episode <span id="downloadEpNum">1</span></div>
+    <div class="download-options">
+      <a class="download-option" href="#" onclick="downloadFrom('9anime', event)" target="_blank">
+        📺 9Anime (360p, 720p, 1080p)
+      </a>
+      <a class="download-option" href="#" onclick="downloadFrom('gogoanime', event)" target="_blank">
+        📺 GogoAnime (720p, 1080p)
+      </a>
+      <a class="download-option" href="#" onclick="downloadFrom('zoro', event)" target="_blank">
+        📺 Zoro.to (1080p Available)
+      </a>
+      <a class="download-option" href="#" onclick="downloadFrom('vidstreaming', event)" target="_blank">
+        📺 VidStreaming (720p)
+      </a>
+    </div>
+    <div class="download-warning">
+      ⚠️ <strong>Note:</strong> You will be redirected to external sites. Use a download manager for best results.
+    </div>
+  </div>
 </div>
 
 <script>
@@ -629,7 +725,7 @@ async function getStreamUrl() {
       case 'vidsrc':
         return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}`;
       case 'vidsrcpro':
-        return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}`;
+        return `https://vidsrc.pro/embed/anime/${animeId}/${currentEp}`;
       case 'embed':
         return `https://embed.malweb.org/?video=crunchyroll/${animeId}/${currentEp}`;
       case 'animefree':
@@ -637,7 +733,7 @@ async function getStreamUrl() {
       case 'vidsrc-dub':
         return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}?dub=1`;
       case 'vidsrcpro-dub':
-        return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}?dub=1`;
+        return `https://vidsrc.pro/embed/anime/${animeId}/${currentEp}?dub=1`;
       default:
         return `https://vidsrc.me/embed/anime/${animeId}/${currentEp}`;
     }
@@ -700,6 +796,42 @@ function shareEp() {
     });
   } else {
     alert('Share URL: ' + url);
+  }
+}
+
+function openDownloadModal() {
+  document.getElementById('downloadEpNum').textContent = currentEp;
+  document.getElementById('downloadModal').classList.add('active');
+}
+
+function closeDownloadModal() {
+  document.getElementById('downloadModal').classList.remove('active');
+}
+
+function downloadFrom(site, e) {
+  e.preventDefault();
+  
+  const animeTitle = document.getElementById('animeTitle').textContent;
+  let downloadUrl = '';
+  
+  switch(site) {
+    case '9anime':
+      downloadUrl = `https://www.9anime.to/search?keyword=${encodeURIComponent(animeTitle)}`;
+      break;
+    case 'gogoanime':
+      downloadUrl = `https://www1.gogoanime.bid/search?keyword=${encodeURIComponent(animeTitle)}`;
+      break;
+    case 'zoro':
+      downloadUrl = `https://zoro.to/search?keyword=${encodeURIComponent(animeTitle)}`;
+      break;
+    case 'vidstreaming':
+      downloadUrl = `https://vidstreaming.io/streaming.php?id=${animeId}&episode=${currentEp}`;
+      break;
+  }
+  
+  if (downloadUrl) {
+    window.open(downloadUrl, '_blank');
+    closeDownloadModal();
   }
 }
 
