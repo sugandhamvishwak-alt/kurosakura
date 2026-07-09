@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KuroSakura Player</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #000000;
+  --deep: #0a0008;
+  --card: #0f000d;
+  --elevated: #1a0018;
+  --sakura: #ffb7c5;
+  --sakura-dim: #c85a82;
+  --sakura-glow: rgba(255,183,197,0.12);
+  --sakura-border: rgba(255,183,197,0.15);
+  --text: #fff0f5;
+  --text2: #c49aaa;
+  --text3: #7a4a5a;
+  --font-brand: 'Cinzel', serif;
+  --font-ui: 'Rajdhani', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--void); color:var(--text); font-family:var(--font-body); min-height:100vh; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:var(--void); }
+::-webkit-scrollbar-thumb { background:var(--elevated); border-radius:2px; }
+
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  height:52px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:rgba(0,0,0,0.97);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--sakura-border);
+}
+.logo { font-family:var(--font-brand); font-size:17px; font-weight:700; letter-spacing:2px; color:var(--text); text-decoration:none; }
+.logo span { color:var(--sakura); }
+.back-link { color:var(--text2); font-size:13px; text-decoration:none; transition:color 0.2s; }
+.back-link:hover { color:var(--sakura); }
+
+.layout { display:grid; grid-template-columns:1fr 280px; min-height:100vh; padding-top:52px; }
+
+.main { padding:16px 18px; }
+
+.player-box {
+  background:#000; border-radius:10px; overflow:hidden;
+  aspect-ratio:16/9; position:relative;
+  border:1px solid var(--sakura-border);
+  box-shadow:0 0 50px rgba(255,183,197,0.06);
+}
+.player-box iframe { width:100%; height:100%; border:none; display:block; }
+
+.placeholder {
+  width:100%; height:100%;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:14px;
+  background:radial-gradient(ellipse at center, #150010 0%, #000 70%);
+  cursor:pointer;
+}
+.placeholder:hover .play-btn { box-shadow:0 0 60px rgba(255,183,197,0.6); transform:scale(1.06); }
+.play-btn {
+  width:68px; height:68px; border-radius:50%;
+  background:linear-gradient(135deg,var(--sakura),var(--sakura-dim));
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; color:#000; cursor:pointer;
+  box-shadow:0 0 35px rgba(255,183,197,0.35);
+  transition:all 0.22s; border:2px solid rgba(255,255,255,0.15);
+}
+.petals { font-size:18px; letter-spacing:10px; opacity:0.35; }
+.play-hint { font-family:var(--font-ui); font-size:13px; color:var(--text2); letter-spacing:1px; }
+
+.info { margin-top:14px; }
+.title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:5px; }
+.anime-title { font-family:var(--font-ui); font-size:20px; font-weight:700; }
+.ep-badge {
+  background:var(--sakura-glow); border:1px solid var(--sakura-border);
+  color:var(--sakura); font-size:11px; font-weight:700;
+  padding:3px 10px; border-radius:4px; white-space:nowrap;
+  font-family:var(--font-ui); flex-shrink:0;
+}
+.meta { font-size:12px; color:var(--text3); margin-bottom:12px; }
+
+.btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.btn {
+  display:flex; align-items:center; gap:5px;
+  background:var(--elevated); border:1px solid var(--sakura-border);
+  color:var(--text2); padding:7px 14px; border-radius:6px;
+  font-size:12px; cursor:pointer; transition:all 0.18s;
+  font-family:var(--font-body);
+}
+.btn:hover { border-color:var(--sakura); color:var(--sakura); background:var(--sakura-glow); }
+.btn.primary { background:linear-gradient(135deg,var(--sakura-dim),#90204a); border-color:var(--sakura-dim); color:#fff; }
+.btn.primary:hover { background:linear-gradient(135deg,var(--sakura),var(--sakura-dim)); }
+
+.server-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:7px; font-family:var(--font-ui); }
+.stabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.stab {
+  background:var(--card); border:1px solid var(--sakura-border);
+  color:var(--text2); padding:6px 14px; border-radius:5px;
+  font-size:12px; cursor:pointer; transition:all 0.18s;
+  font-family:var(--font-body);
+}
+.stab.active, .stab:hover { background:var(--sakura-glow); border-color:var(--sakura); color:var(--sakura); }
+
+.sidebar {
+  border-left:1px solid var(--sakura-border);
+  background:var(--deep);
+  overflow-y:auto;
+  max-height:calc(100vh - 52px);
+  position:sticky; top:52px;
+}
+.sidebar-hd {
+  padding:14px; border-bottom:1px solid var(--sakura-border);
+  position:sticky; top:0; background:var(--deep); z-index:2;
+}
+.sidebar-title {
+  font-family:var(--font-ui); font-size:13px; font-weight:700;
+  display:flex; align-items:center; gap:7px; margin-bottom:4px;
+}
+.sidebar-title::before { content:''; width:3px; height:13px; background:var(--sakura); border-radius:2px; display:block; }
+.ep-count { font-size:11px; color:var(--text3); }
+.ep-search {
+  width:100%; background:var(--elevated); border:1px solid var(--sakura-border);
+  color:var(--text); padding:6px 10px; border-radius:5px;
+  font-size:12px; font-family:var(--font-body); margin-top:8px;
+  outline:none; transition:border-color 0.2s;
+}
+.ep-search:focus { border-color:var(--sakura); }
+.ep-search::placeholder { color:var(--text3); }
+
+.ep-list { padding:6px; }
+.ep-item {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 9px; border-radius:6px; cursor:pointer;
+  border:1px solid transparent; transition:all 0.15s; margin-bottom:2px;
+}
+.ep-item:hover { background:var(--elevated); border-color:var(--sakura-border); }
+.ep-item.active { background:var(--sakura-glow); border-color:rgba(255,183,197,0.28); }
+.ep-item.filler { opacity:0.5; }
+.ep-num { font-family:var(--font-ui); font-size:14px; font-weight:700; color:var(--text3); min-width:24px; text-align:center; flex-shrink:0; }
+.ep-item.active .ep-num { color:var(--sakura); }
+.ep-details { flex:1; min-width:0; }
+.ep-name { font-size:11px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+.ep-item.filler .ep-name { color:var(--text3); }
+.ep-sub { display:flex; align-items:center; gap:5px; }
+.ep-dur { font-size:10px; color:var(--text3); }
+.filler-tag { font-size:8px; font-weight:700; color:var(--text3); background:#0f000d; border:1px solid #2a1020; padding:1px 4px; border-radius:2px; }
+.watched-dot { width:5px; height:5px; border-radius:50%; background:var(--sakura); flex-shrink:0; opacity:0; }
+.ep-item.watched .watched-dot { opacity:1; }
+
+.spinner-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; gap:12px; }
+.spinner { width:28px; height:28px; border:3px solid var(--sakura-border); border-top-color:var(--sakura); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-txt { font-size:12px; color:var(--text3); }
+
+/* DOWNLOAD MODAL */
+.dl-modal {
+  position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:500;
+  display:none; align-items:center; justify-content:center;
+  backdrop-filter:blur(10px);
+}
+.dl-modal.open { display:flex; }
+.dl-box {
+  background:var(--deep); border:1px solid var(--sakura-border);
+  border-radius:12px; padding:24px; width:320px; max-width:90vw;
+  position:relative;
+}
+.dl-close {
+  position:absolute; top:12px; right:14px; background:none; border:none;
+  color:var(--text3); font-size:20px; cursor:pointer; transition:color 0.2s;
+}
+.dl-close:hover { color:var(--sakura); }
+.dl-title { font-family:var(--font-ui); font-size:17px; font-weight:700; margin-bottom:4px; }
+.dl-sub { font-size:12px; color:var(--text3); margin-bottom:18px; }
+.dl-quality-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; font-family:var(--font-ui); }
+.dl-quality-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+.dl-q {
+  background:var(--elevated); border:1px solid var(--sakura-border);
+  color:var(--text2); padding:7px 16px; border-radius:5px; font-size:13px;
+  cursor:pointer; transition:all 0.18s; font-family:var(--font-body);
+}
+.dl-q:hover, .dl-q.active { background:var(--sakura-glow); border-color:var(--sakura); color:var(--sakura); }
+.dl-sites-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; font-family:var(--font-ui); }
+.dl-site-btn {
+  display:flex; align-items:center; justify-content:space-between;
+  width:100%; background:var(--elevated); border:1px solid var(--sakura-border);
+  color:var(--text); padding:10px 14px; border-radius:6px; margin-bottom:8px;
+  cursor:pointer; transition:all 0.18s; font-family:var(--font-body); font-size:13px;
+  text-decoration:none;
+}
+.dl-site-btn:hover { border-color:var(--sakura); color:var(--sakura); background:var(--sakura-glow); }
+.dl-site-badge { font-size:10px; color:var(--text3); background:var(--card); padding:2px 7px; border-radius:3px; }
+  .layout { grid-template-columns:1fr; }
+  .sidebar { max-height:300px; border-left:none; border-top:1px solid var(--sakura-border); position:static; }
+  .main { padding:12px 14px; }
+  .anime-title { font-size:16px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/">Kuro<span>Sakura</span></a>
+  <a class="back-link" href="/">&#8592; Browse</a>
+</nav>
+
+<div class="layout">
+  <div class="main">
+
+    <div class="player-box" id="playerBox">
+      <div class="placeholder" id="placeholder" onclick="play()">
+        <div class="petals">&#10058; &#10058; &#10058;</div>
+        <div class="play-btn">&#9658;</div>
+        <div class="play-hint" id="playHint">Tap to Watch</div>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="title-row">
+        <div class="anime-title" id="title">Loading...</div>
+        <div class="ep-badge" id="epBadge">EP 1</div>
+      </div>
+      <div class="meta" id="meta">Fetching info...</div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="play()">&#9658; Play</button>
+        <button class="btn" onclick="toggleWatched()">&#10003; Watched</button>
+        <button class="btn" onclick="share()">&#8599; Share</button>
+        <button class="btn" onclick="toggleBookmark()">&#9825; Save</button>
+        <button class="btn" onclick="openDownload()">&#11015; Download</button>
+      </div>
+
+      <div class="server-label">&#10058; Sub</div>
+      <div class="stabs" id="subTabs">
+        <div class="stab active" onclick="setServer(this,'vidsrc')">VidSrc</div>
+        <div class="stab" onclick="setServer(this,'vidsrcpro')">VidSrc Pro</div>
+        <div class="stab" onclick="setServer(this,'embed')">Embed</div>
+        <div class="stab" onclick="setServer(this,'animefree')">AnimeFree</div>
+      </div>
+      <div class="server-label">&#10058; Dub</div>
+      <div class="stabs" id="dubTabs">
+        <div class="stab" onclick="setServer(this,'vidsrc-dub')">VidSrc Dub</div>
+        <div class="stab" onclick="setServer(this,'pro-dub')">Pro Dub</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-hd">
+      <div class="sidebar-title">Episodes</div>
+      <div class="ep-count" id="epCount">Loading...</div>
+      <input class="ep-search" type="text" placeholder="Search episodes..." oninput="filterEps(this.value)">
+    </div>
+    <div class="ep-list" id="epList">
+      <div class="spinner-wrap"><div class="spinner"></div><div class="loading-txt">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DOWNLOAD MODAL -->
+<div class="dl-modal" id="dlModal">
+  <div class="dl-box">
+    <button class="dl-close" onclick="closeDownload()">&times;</button>
+    <div class="dl-title">&#11015; Download Episode</div>
+    <div class="dl-sub" id="dlSub">Select quality and download source</div>
+
+    <div class="dl-quality-label">Select Quality</div>
+    <div class="dl-quality-row">
+      <div class="dl-q active" onclick="selectQuality(this,'360p')">360p</div>
+      <div class="dl-q" onclick="selectQuality(this,'480p')">480p</div>
+      <div class="dl-q" onclick="selectQuality(this,'720p')">720p HD</div>
+      <div class="dl-q" onclick="selectQuality(this,'1080p')">1080p FHD</div>
+    </div>
+
+    <div class="dl-sites-label">Download From</div>
+    <a class="dl-site-btn" id="dlAnimepahe" href="#" target="_blank" rel="noopener">
+      <span>&#127973; AnimePahe</span>
+      <span class="dl-site-badge">Fast</span>
+    </a>
+    <a class="dl-site-btn" id="dlGogo" href="#" target="_blank" rel="noopener">
+      <span>&#127909; GogoAnime</span>
+      <span class="dl-site-badge">Popular</span>
+    </a>
+    <a class="dl-site-btn" id="dlAnimeout" href="#" target="_blank" rel="noopener">
+      <span>&#128190; AnimeOut</span>
+      <span class="dl-site-badge">HQ</span>
+    </a>
+    <a class="dl-site-btn" id="dlNyaa" href="#" target="_blank" rel="noopener">
+      <span>&#128190; Nyaa.si</span>
+      <span class="dl-site-badge">Torrent</span>
+    </a>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const animeId = params.get('id') || '20';
+let ep = parseInt(params.get('ep')) || 1;
+let server = 'vidsrc';
+let totalEps = 0;
+let epData = [];
+let watched = new Set();
+
+// Known filler episodes per anime ID
+const fillers = {
+  20: new Set([26,97,98,99,100,101,102,103,104,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220]),
+  21: new Set([54,55,56,57,58,59,60,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,220,221,222,223,224,225,226]),
+  1535: new Set([]),
+};
+
+function isFiller(id, n) {
+  return fillers[id]?.has(n) || false;
+}
+
+async function loadAnime() {
+  try {
+    const q = `query($id:Int){Media(id:$id,type:ANIME){title{english romaji}averageScore episodes genres startDate{year}streamingEpisodes{title}}}`;
+    const r = await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,variables:{id:parseInt(animeId)}})});
+    const j = await r.json();
+    const m = j?.data?.Media;
+    if(!m) throw new Error('Not found');
+
+    const t = m.title.english || m.title.romaji;
+    document.title = t + ' — KuroSakura';
+    document.getElementById('title').textContent = t;
+    document.getElementById('meta').innerHTML = `&#9733; ${m.averageScore?(m.averageScore/10).toFixed(1):'?'} &nbsp;·&nbsp; ${m.startDate?.year||''} &nbsp;·&nbsp; ${(m.genres||[]).slice(0,2).join(', ')}`;
+
+    totalEps = m.episodes || 0;
+    const streamEps = m.streamingEpisodes || [];
+    const count = totalEps || streamEps.length || 26;
+
+    epData = Array.from({length:count},(_,i)=>{
+      const n = i+1;
+      const s = streamEps[i];
+      const rawTitle = s?.title || '';
+      const cleanTitle = rawTitle.replace(/^Episode \d+\s*[-:]\s*/i,'').trim() || ('Episode '+n);
+      return {num:n, title:cleanTitle, filler:isFiller(parseInt(animeId),n)};
+    });
+
+    document.getElementById('epCount').textContent = count + ' episodes';
+    renderEps(epData);
+    document.getElementById('playHint').textContent = 'Tap to watch Episode ' + ep;
+  } catch(e) {
+    // Fallback: generate 24 episodes without API
+    document.getElementById('title').textContent = 'Anime #' + animeId;
+    document.getElementById('meta').textContent = 'Episode info unavailable';
+    totalEps = 24;
+    epData = Array.from({length:24},(_,i)=>({num:i+1,title:'Episode '+(i+1),filler:false}));
+    document.getElementById('epCount').textContent = '24 episodes';
+    renderEps(epData);
+    document.getElementById('playHint').textContent = 'Tap to Watch Episode ' + ep;
+  }
+}
+
+function renderEps(list) {
+  const el = document.getElementById('epList');
+  if(!list.length){el.innerHTML='<div class="spinner-wrap"><div class="loading-txt">No episodes</div></div>';return;}
+  el.innerHTML = list.map(e=>`
+    <div class="ep-item ${e.filler?'filler':''} ${e.num===ep?'active':''} ${watched.has(e.num)?'watched':''}" id="ep-${e.num}" onclick="selectEp(${e.num})">
+      <div class="ep-num">${e.num}</div>
+      <div class="ep-details">
+        <div class="ep-name">${e.title}</div>
+        <div class="ep-sub">
+          <span class="ep-dur">23 min</span>
+          ${e.filler?'<span class="filler-tag">FILLER</span>':''}
+        </div>
+      </div>
+      <div class="watched-dot"></div>
+    </div>`).join('');
+  setTimeout(()=>document.getElementById('ep-'+ep)?.scrollIntoView({block:'center'}),100);
+}
+
+function filterEps(q) {
+  if(!q.trim()){renderEps(epData);return;}
+  renderEps(epData.filter(e=>e.title.toLowerCase().includes(q.toLowerCase())||e.num.toString().includes(q)));
+}
+
+const PROXY = 'https://kurosakura.sugamdhavishwak.workers.dev/?url=';
+
+function getUrl() {
+  const id = animeId;
+  let src;
+  switch(server) {
+    case 'vidsrc':    src = `https://vidsrc.xyz/embed/anime?id=${id}&episode=${ep}`; break;
+    case 'vidsrcpro': src = `https://vidsrc.pro/embed/anime/${id}/${ep}`; break;
+    case 'embed':     src = `https://vidsrc.to/embed/anime/${id}/${ep}`; break;
+    case 'animefree': src = `https://vidsrc.me/embed/anime/${id}/${ep}`; break;
+    case 'vidsrc-dub':src = `https://vidsrc.xyz/embed/anime?id=${id}&episode=${ep}&dub=1`; break;
+    case 'pro-dub':   src = `https://vidsrc.pro/embed/anime/${id}/${ep}/dub`; break;
+    default:          src = `https://vidsrc.xyz/embed/anime?id=${id}&episode=${ep}`;
+  }
+  return PROXY + encodeURIComponent(src);
+}
+
+function play() {
+  document.getElementById('playerBox').innerHTML = `<iframe src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer"></iframe>`;
+  watched.add(ep);
+  document.getElementById('ep-'+ep)?.classList.add('watched');
+}
+
+function selectEp(n) {
+  ep = n;
+  document.querySelectorAll('.ep-item').forEach(e=>e.classList.remove('active'));
+  document.getElementById('ep-'+n)?.classList.add('active');
+  document.getElementById('epBadge').textContent = 'EP ' + n;
+  history.pushState({},'',`?id=${animeId}&ep=${n}`);
+  const hasIframe = !!document.getElementById('playerBox').querySelector('iframe');
+  if(hasIframe) play();
+  else {
+    document.getElementById('playerBox').innerHTML = `<div class="placeholder" onclick="play()"><div class="petals">&#10058; &#10058; &#10058;</div><div class="play-btn">&#9658;</div><div class="play-hint">Tap to watch Episode ${n}</div></div>`;
+  }
+  document.getElementById('playerBox').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function setServer(el, s) {
+  el.closest('.stabs').querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  server = s;
+  if(document.getElementById('playerBox').querySelector('iframe')) play();
+}
+
+function toggleWatched() {
+  if(watched.has(ep)){watched.delete(ep);document.getElementById('ep-'+ep)?.classList.remove('watched');}
+  else{watched.add(ep);document.getElementById('ep-'+ep)?.classList.add('watched');}
+}
+
+function share() {
+  const url = location.href;
+  if(navigator.share) navigator.share({title:document.title,url});
+  else { navigator.clipboard?.writeText(url); showToast('Link copied!'); }
+}
+function getBookmarks() {
+  try { return JSON.parse(localStorage.getItem('ks_bm')||'[]'); } catch(e){return[];}
+}
+function saveBookmarks(b) {
+  try { localStorage.setItem('ks_bm', JSON.stringify(b)); } catch(e){}
+}
+function isBookmarked() { return getBookmarks().some(b=>b.id==animeId); }
+function toggleBookmark() {
+  let bm = getBookmarks();
+  const i = bm.findIndex(b=>b.id==animeId);
+  if(i>=0){
+    bm.splice(i,1);
+    showToast('Removed from bookmarks');
+    document.querySelector('.btn-row .btn:nth-child(4)').innerHTML='&#9825; Save';
+  } else {
+    const title = document.getElementById('title').textContent;
+    bm.unshift({id:parseInt(animeId),title,coverImage:{large:''},episodes:totalEps});
+    showToast('Saved to bookmarks!');
+    document.querySelector('.btn-row .btn:nth-child(4)').innerHTML='&#9829; Saved';
+  }
+  saveBookmarks(bm);
+}
+
+// ─── DOWNLOAD MODAL ───
+let dlQuality = '360p';
+
+function openDownload() {
+  const title = document.getElementById('title').textContent;
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'');
+  document.getElementById('dlSub').textContent = title + ' — Episode ' + ep;
+
+  // Build search URLs for each site
+  const q = encodeURIComponent(title + ' episode ' + ep);
+  const qSlug = encodeURIComponent(slug + '-episode-' + ep);
+
+  document.getElementById('dlAnimepahe').href = `https://animepahe.ru/anime/${slug}`;
+  document.getElementById('dlGogo').href = `https://gogoanime3.cc/${slug}-episode-${ep}`;
+  document.getElementById('dlAnimeout').href = `https://www.animeout.xyz/?s=${q}`;
+  document.getElementById('dlNyaa').href = `https://nyaa.si/?f=0&c=1_0&q=${q}`;
+
+  document.getElementById('dlModal').classList.add('open');
+}
+
+function closeDownload() {
+  document.getElementById('dlModal').classList.remove('open');
+}
+
+function selectQuality(el, q) {
+  document.querySelectorAll('.dl-q').forEach(d=>d.classList.remove('active'));
+  el.classList.add('active');
+  dlQuality = q;
+  // Update nyaa search to include quality
+  const title = document.getElementById('title').textContent;
+  const qEnc = encodeURIComponent(title + ' episode ' + ep + ' ' + q);
+  document.getElementById('dlNyaa').href = `https://nyaa.si/?f=0&c=1_0&q=${qEnc}`;
+}
+
+// Close modal on overlay click
+document.getElementById('dlModal').addEventListener('click', function(e){
+  if(e.target===this) closeDownload();
+});
+
+// ─── TOAST ───
+let toastT;
+function showToast(msg) {
+  let t = document.getElementById('playerToast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'playerToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a0018;border:1px solid rgba(255,183,197,0.28);color:#fff0f5;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;transition:transform 0.3s;white-space:nowrap;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>{ t.style.transform='translateX(-50%) translateY(80px)'; }, 2500);
+}
+
+// Init — player works immediately even if API fails
+document.getElementById('epBadge').textContent = 'EP ' + ep;
+document.getElementById('playHint').textContent = 'Tap to Watch Episode ' + ep;
+loadAnime();
+</script>
+</body>
+</html>
