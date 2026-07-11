@@ -235,7 +235,6 @@ nav {
       <div class="server-label">&#10058; Sub</div>
       <div class="stabs" id="subTabs">
         <div class="stab active" onclick="setServer(this,'vidnest')">VidNest</div>
-        <div class="stab" onclick="setServer(this,'vidnest2')">VidNest Alt</div>
       </div>
       <div class="server-label">&#10058; Dub</div>
       <div class="stabs" id="dubTabs">
@@ -300,7 +299,6 @@ let totalEps = 0;
 let epData = [];
 let watched = new Set();
 
-// Known filler episodes per anime ID
 const fillers = {
   20: new Set([26,97,98,99,100,101,102,103,104,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220]),
   21: new Set([54,55,56,57,58,59,60,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,220,221,222,223,224,225,226]),
@@ -340,7 +338,6 @@ async function loadAnime() {
     renderEps(epData);
     document.getElementById('playHint').textContent = 'Tap to watch Episode ' + ep;
   } catch(e) {
-    // Fallback: generate 24 episodes without API
     document.getElementById('title').textContent = 'Anime #' + animeId;
     document.getElementById('meta').textContent = 'Episode info unavailable';
     totalEps = 24;
@@ -381,7 +378,7 @@ function getUrl() {
 }
 
 function play() {
-  document.getElementById('playerBox').innerHTML = `<iframe src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>`;
+  document.getElementById('playerBox').innerHTML = `<iframe src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer"></iframe>`;
   watched.add(ep);
   document.getElementById('ep-'+ep)?.classList.add('watched');
 }
@@ -440,7 +437,6 @@ function toggleBookmark() {
   saveBookmarks(bm);
 }
 
-// ─── DOWNLOAD MODAL ───
 let dlQuality = '360p';
 
 function openDownload() {
@@ -475,7 +471,6 @@ document.getElementById('dlModal').addEventListener('click', function(e){
   if(e.target===this) closeDownload();
 });
 
-// ─── TOAST ───
 let toastT;
 function showToast(msg) {
   let t = document.getElementById('playerToast');
@@ -491,7 +486,6 @@ function showToast(msg) {
   toastT = setTimeout(()=>{ t.style.transform='translateX(-50%) translateY(80px)'; }, 2500);
 }
 
-// Init — player works immediately even if API fails
 document.getElementById('epBadge').textContent = 'EP ' + ep;
 document.getElementById('playHint').textContent = 'Tap to Watch Episode ' + ep;
 loadAnime();
