@@ -234,15 +234,12 @@ nav {
 
       <div class="server-label">&#10058; Sub</div>
       <div class="stabs" id="subTabs">
-        <div class="stab active" onclick="setServer(this,'vidsrc')">VidSrc</div>
-        <div class="stab" onclick="setServer(this,'vidsrcpro')">VidSrc Pro</div>
-        <div class="stab" onclick="setServer(this,'embed')">Embed</div>
-        <div class="stab" onclick="setServer(this,'animefree')">AnimeFree</div>
+        <div class="stab active" onclick="setServer(this,'vidnest')">VidNest</div>
+        <div class="stab" onclick="setServer(this,'vidnest2')">VidNest Alt</div>
       </div>
       <div class="server-label">&#10058; Dub</div>
       <div class="stabs" id="dubTabs">
-        <div class="stab" onclick="setServer(this,'vidsrc-dub')">VidSrc Dub</div>
-        <div class="stab" onclick="setServer(this,'pro-dub')">Pro Dub</div>
+        <div class="stab" onclick="setServer(this,'vidnest-dub')">VidNest Dub</div>
       </div>
     </div>
   </div>
@@ -298,7 +295,7 @@ nav {
 const params = new URLSearchParams(location.search);
 const animeId = params.get('id') || '20';
 let ep = parseInt(params.get('ep')) || 1;
-let server = 'vidsrc';
+let server = 'vidnest';
 let totalEps = 0;
 let epData = [];
 let watched = new Set();
@@ -377,25 +374,14 @@ function filterEps(q) {
   renderEps(epData.filter(e=>e.title.toLowerCase().includes(q.toLowerCase())||e.num.toString().includes(q)));
 }
 
-const PROXY = 'https://kurosakura.sugamdhavishwak.workers.dev/?url=';
-
 function getUrl() {
   const id = animeId;
-  let src;
-  switch(server) {
-    case 'vidsrc':    src = `https://vidsrc.xyz/embed/anime?id=${id}&episode=${ep}`; break;
-    case 'vidsrcpro': src = `https://vidsrc.pro/embed/anime/${id}/${ep}`; break;
-    case 'embed':     src = `https://vidsrc.to/embed/anime/${id}/${ep}`; break;
-    case 'animefree': src = `https://vidsrc.me/embed/anime/${id}/${ep}`; break;
-    case 'vidsrc-dub':src = `https://vidsrc.xyz/embed/anime?id=${id}&episode=${ep}&dub=1`; break;
-    case 'pro-dub':   src = `https://vidsrc.pro/embed/anime/${id}/${ep}/dub`; break;
-    default:          src = `https://vidsrc.xyz/embed/anime?id=${id}&episode=${ep}`;
-  }
-  return PROXY + encodeURIComponent(src);
+  const subdub = server.includes('dub') ? 'dub' : 'sub';
+  return `https://vidnest.fun/anime/${id}/${ep}/${subdub}`;
 }
 
 function play() {
-  document.getElementById('playerBox').innerHTML = `<iframe src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer"></iframe>`;
+  document.getElementById('playerBox').innerHTML = `<iframe src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>`;
   watched.add(ep);
   document.getElementById('ep-'+ep)?.classList.add('watched');
 }
@@ -462,9 +448,7 @@ function openDownload() {
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'');
   document.getElementById('dlSub').textContent = title + ' — Episode ' + ep;
 
-  // Build search URLs for each site
   const q = encodeURIComponent(title + ' episode ' + ep);
-  const qSlug = encodeURIComponent(slug + '-episode-' + ep);
 
   document.getElementById('dlAnimepahe').href = `https://animepahe.ru/anime/${slug}`;
   document.getElementById('dlGogo').href = `https://gogoanime3.cc/${slug}-episode-${ep}`;
@@ -482,13 +466,11 @@ function selectQuality(el, q) {
   document.querySelectorAll('.dl-q').forEach(d=>d.classList.remove('active'));
   el.classList.add('active');
   dlQuality = q;
-  // Update nyaa search to include quality
   const title = document.getElementById('title').textContent;
   const qEnc = encodeURIComponent(title + ' episode ' + ep + ' ' + q);
   document.getElementById('dlNyaa').href = `https://nyaa.si/?f=0&c=1_0&q=${qEnc}`;
 }
 
-// Close modal on overlay click
 document.getElementById('dlModal').addEventListener('click', function(e){
   if(e.target===this) closeDownload();
 });
