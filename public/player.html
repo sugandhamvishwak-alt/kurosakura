@@ -156,6 +156,8 @@ nav {
 @keyframes spin { to { transform:rotate(360deg); } }
 .loading-txt { font-size:12px; color:var(--text3); }
 
+.kb-hint { font-size:10px; color:var(--text3); margin-top:8px; opacity:0.7; }
+
 /* DOWNLOAD MODAL */
 .dl-modal {
   position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:500;
@@ -227,6 +229,7 @@ nav {
       <div class="btn-row">
         <button class="btn primary" onclick="play()">&#9658; Play</button>
         <button class="btn" onclick="tryNextServer()">&#8635; Try Another Server</button>
+        <button class="btn" onclick="skipIntro()">&#9193; Skip Intro (+85s)</button>
         <button class="btn" onclick="toggleWatched()">&#10003; Watched</button>
         <button class="btn" onclick="share()">&#8599; Share</button>
         <button class="btn" onclick="toggleBookmark()">&#9825; Save</button>
@@ -243,6 +246,8 @@ nav {
         <div class="stab" onclick="setServer(this,'vidnest-dub')">VidNest Dub</div>
         <div class="stab" onclick="setServer(this,'vidsrccc-dub')">Server 2 Dub</div>
       </div>
+
+      <div class="kb-hint">⌨️ Shortcuts: ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen player</div>
     </div>
   </div>
 
@@ -297,6 +302,7 @@ let server = 'vidnest';
 let totalEps = 0;
 let epData = [];
 let watched = new Set();
+let animeTitleCache = '';
 
 const vidnestServers = ['alfa','beta','gama','sigma','lamda','primesrc','catflix','hexa','delta'];
 let serverIndex = 0;
@@ -320,6 +326,7 @@ async function loadAnime() {
     if(!m) throw new Error('Not found');
 
     const t = m.title.english || m.title.romaji;
+    animeTitleCache = t;
     document.title = t + ' — KuroSakura';
     document.getElementById('title').textContent = t;
     document.getElementById('meta').innerHTML = `&#9733; ${m.averageScore?(m.averageScore/10).toFixed(1):'?'} &nbsp;·&nbsp; ${m.startDate?.year||''} &nbsp;·&nbsp; ${(m.genres||[]).slice(0,2).join(', ')}`;
@@ -340,7 +347,8 @@ async function loadAnime() {
     renderEps(epData);
     document.getElementById('playHint').textContent = 'Tap to watch Episode ' + ep;
   } catch(e) {
-    document.getElementById('title').textContent = 'Anime #' + animeId;
+    animeTitleCache = 'Anime #' + animeId;
+    document.getElementById('title').textContent = animeTitleCache;
     document.getElementById('meta').textContent = 'Episode info unavailable';
     totalEps = 24;
     epData = Array.from({length:24},(_,i)=>({num:i+1,title:'Episode '+(i+1),filler:false}));
@@ -373,6 +381,8 @@ function filterEps(q) {
   renderEps(epData.filter(e=>e.title.toLowerCase().includes(q.toLowerCase())||e.num.toString().includes(q)));
 }
 
+let skipSeconds = 0;
+
 function getUrl() {
   const id = animeId;
   const subdub = server.includes('dub') ? 'dub' : 'sub';
@@ -380,7 +390,9 @@ function getUrl() {
     return `https://vidsrc.cc/v2/embed/anime/${id}/${ep}/${subdub}`;
   }
   const s = vidnestServers[serverIndex];
-  return `https://vidnest.fun/anime/${id}/${ep}/${subdub}?server=${s}`;
+  let url = `https://vidnest.fun/anime/${id}/${ep}/${subdub}?server=${s}`;
+  if (skipSeconds > 0) url += `&startAt=${skipSeconds}`;
+  return url;
 }
 
 function tryNextServer() {
@@ -389,14 +401,36 @@ function tryNextServer() {
   showToast('Trying server: ' + vidnestServers[serverIndex]);
 }
 
+function skipIntro() {
+  skipSeconds = 85;
+  play();
+  showToast('Skipped to 1:25');
+}
+
 function play() {
-  document.getElementById('playerBox').innerHTML = `<iframe src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer"></iframe>`;
+  document.getElementById('playerBox').innerHTML = `<iframe id="videoFrame" src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer"></iframe>`;
   watched.add(ep);
   document.getElementById('ep-'+ep)?.classList.add('watched');
+  saveContinueWatching();
+}
+
+function saveContinueWatching() {
+  try {
+    const data = JSON.parse(localStorage.getItem('ks_continue') || '{}');
+    data[animeId] = {
+      id: parseInt(animeId),
+      title: animeTitleCache || document.getElementById('title').textContent,
+      ep: ep,
+      totalEps: totalEps,
+      lastWatched: Date.now()
+    };
+    localStorage.setItem('ks_continue', JSON.stringify(data));
+  } catch(e) {}
 }
 
 function selectEp(n) {
   ep = n;
+  skipSeconds = 0;
   document.querySelectorAll('.ep-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('ep-'+n)?.classList.add('active');
   document.getElementById('epBadge').textContent = 'EP ' + n;
@@ -409,11 +443,19 @@ function selectEp(n) {
   document.getElementById('playerBox').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+function nextEp() {
+  if (ep < totalEps || ep < epData.length) selectEp(ep + 1);
+}
+function prevEp() {
+  if (ep > 1) selectEp(ep - 1);
+}
+
 function setServer(el, s) {
   el.closest('.stabs').querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   server = s;
   serverIndex = 0;
+  skipSeconds = 0;
   if(document.getElementById('playerBox').querySelector('iframe')) play();
 }
 
@@ -440,12 +482,12 @@ function toggleBookmark() {
   if(i>=0){
     bm.splice(i,1);
     showToast('Removed from bookmarks');
-    document.querySelector('.btn-row .btn:nth-child(4)').innerHTML='&#9825; Save';
+    document.querySelector('.btn-row .btn:nth-child(6)').innerHTML='&#9825; Save';
   } else {
     const title = document.getElementById('title').textContent;
     bm.unshift({id:parseInt(animeId),title,coverImage:{large:''},episodes:totalEps});
     showToast('Saved to bookmarks!');
-    document.querySelector('.btn-row .btn:nth-child(4)').innerHTML='&#9829; Saved';
+    document.querySelector('.btn-row .btn:nth-child(6)').innerHTML='&#9829; Saved';
   }
   saveBookmarks(bm);
 }
@@ -497,6 +539,18 @@ function showToast(msg) {
   clearTimeout(toastT);
   toastT = setTimeout(()=>{ t.style.transform='translateX(-50%) translateY(80px)'; }, 2500);
 }
+
+// KEYBOARD SHORTCUTS
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight') { nextEp(); }
+  else if (e.key === 'ArrowLeft') { prevEp(); }
+  else if (e.key === 'f' || e.key === 'F') {
+    const box = document.getElementById('playerBox');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else box.requestFullscreen?.();
+  }
+});
 
 document.getElementById('epBadge').textContent = 'EP ' + ep;
 document.getElementById('playHint').textContent = 'Tap to Watch Episode ' + ep;
