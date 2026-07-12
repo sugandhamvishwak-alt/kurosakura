@@ -235,10 +235,12 @@ nav {
       <div class="server-label">&#10058; Sub</div>
       <div class="stabs" id="subTabs">
         <div class="stab active" onclick="setServer(this,'vidnest')">VidNest</div>
+        <div class="stab" onclick="setServer(this,'vidsrccc')">Server 2</div>
       </div>
       <div class="server-label">&#10058; Dub</div>
       <div class="stabs" id="dubTabs">
         <div class="stab" onclick="setServer(this,'vidnest-dub')">VidNest Dub</div>
+        <div class="stab" onclick="setServer(this,'vidsrccc-dub')">Server 2 Dub</div>
       </div>
     </div>
   </div>
@@ -271,10 +273,6 @@ nav {
     </div>
 
     <div class="dl-sites-label">Download From</div>
-    <a class="dl-site-btn" id="dlAnimepahe" href="#" target="_blank" rel="noopener">
-      <span>&#127973; AnimePahe</span>
-      <span class="dl-site-badge">Fast</span>
-    </a>
     <a class="dl-site-btn" id="dlGogo" href="#" target="_blank" rel="noopener">
       <span>&#127909; GogoAnime</span>
       <span class="dl-site-badge">Popular</span>
@@ -373,6 +371,10 @@ function filterEps(q) {
 
 function getUrl() {
   const id = animeId;
+  if (server === 'vidsrccc' || server === 'vidsrccc-dub') {
+    const subdub = server.includes('dub') ? 'dub' : 'sub';
+    return `https://vidsrc.cc/v2/embed/anime/${id}/${ep}/${subdub}`;
+  }
   const subdub = server.includes('dub') ? 'dub' : 'sub';
   return `https://vidnest.fun/anime/${id}/${ep}/${subdub}`;
 }
@@ -446,7 +448,6 @@ function openDownload() {
 
   const q = encodeURIComponent(title + ' episode ' + ep);
 
-  document.getElementById('dlAnimepahe').href = `https://animepahe.ru/anime/${slug}`;
   document.getElementById('dlGogo').href = `https://gogoanime3.cc/${slug}-episode-${ep}`;
   document.getElementById('dlAnimeout').href = `https://www.animeout.xyz/?s=${q}`;
   document.getElementById('dlNyaa').href = `https://nyaa.si/?f=0&c=1_0&q=${q}`;
