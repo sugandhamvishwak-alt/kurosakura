@@ -158,6 +158,30 @@ nav {
 
 .kb-hint { font-size:10px; color:var(--text3); margin-top:8px; opacity:0.7; }
 
+/* AUTO-NEXT OVERLAY */
+.next-overlay {
+  position:absolute; bottom:16px; right:16px; z-index:50;
+  background:rgba(10,0,8,0.95); border:1px solid var(--sakura-border);
+  border-radius:10px; padding:14px 16px; display:none;
+  min-width:220px; backdrop-filter:blur(10px);
+  box-shadow:0 0 30px rgba(0,0,0,0.5);
+}
+.next-overlay.show { display:block; }
+.next-overlay-title { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-family:var(--font-ui); }
+.next-overlay-ep { font-size:14px; font-weight:700; margin-bottom:10px; }
+.next-overlay-row { display:flex; gap:8px; align-items:center; }
+.next-overlay-btn {
+  background:linear-gradient(135deg,var(--sakura-dim),#90204a); border:none;
+  color:#fff; padding:7px 14px; border-radius:6px; font-size:12px;
+  cursor:pointer; font-family:var(--font-body); font-weight:600;
+}
+.next-overlay-cancel {
+  background:transparent; border:1px solid var(--sakura-border);
+  color:var(--text2); padding:7px 12px; border-radius:6px; font-size:12px;
+  cursor:pointer; font-family:var(--font-body);
+}
+.next-overlay-timer { font-size:11px; color:var(--sakura); margin-left:auto; font-family:var(--font-ui); }
+
 /* DOWNLOAD MODAL */
 .dl-modal {
   position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:500;
@@ -218,6 +242,15 @@ nav {
         <div class="play-btn">&#9658;</div>
         <div class="play-hint" id="playHint">Tap to Watch</div>
       </div>
+      <div class="next-overlay" id="nextOverlay">
+        <div class="next-overlay-title">Up Next</div>
+        <div class="next-overlay-ep" id="nextOverlayEp">Episode 2</div>
+        <div class="next-overlay-row">
+          <button class="next-overlay-btn" onclick="confirmNextNow()">Play Now</button>
+          <button class="next-overlay-cancel" onclick="cancelAutoNext()">Cancel</button>
+          <span class="next-overlay-timer" id="nextOverlayTimer">10s</span>
+        </div>
+      </div>
     </div>
 
     <div class="info">
@@ -230,6 +263,7 @@ nav {
         <button class="btn primary" onclick="play()">&#9658; Play</button>
         <button class="btn" onclick="tryNextServer()">&#8635; Try Another Server</button>
         <button class="btn" onclick="skipIntro()">&#9193; Skip Intro (+85s)</button>
+        <button class="btn" onclick="skipOutro()">&#9193; Skip Outro &#8594;</button>
         <button class="btn" onclick="toggleWatched()">&#10003; Watched</button>
         <button class="btn" onclick="share()">&#8599; Share</button>
         <button class="btn" onclick="toggleBookmark()">&#9825; Save</button>
@@ -247,7 +281,7 @@ nav {
         <div class="stab" onclick="setServer(this,'vidsrccc-dub')">Server 2 Dub</div>
       </div>
 
-      <div class="kb-hint">⌨️ Shortcuts: ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen player</div>
+      <div class="kb-hint">⌨️ Shortcuts: ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen player &nbsp;·&nbsp; Auto-next is a timed estimate, not exact video tracking</div>
     </div>
   </div>
 
@@ -303,6 +337,7 @@ let totalEps = 0;
 let epData = [];
 let watched = new Set();
 let animeTitleCache = '';
+let episodeDurationSec = 24 * 60;
 
 const vidnestServers = ['alfa','beta','gama','sigma','lamda','primesrc','catflix','hexa','delta'];
 let serverIndex = 0;
@@ -319,7 +354,7 @@ function isFiller(id, n) {
 
 async function loadAnime() {
   try {
-    const q = `query($id:Int){Media(id:$id,type:ANIME){title{english romaji}averageScore episodes genres startDate{year}streamingEpisodes{title}}}`;
+    const q = `query($id:Int){Media(id:$id,type:ANIME){title{english romaji}averageScore episodes duration genres startDate{year}streamingEpisodes{title}}}`;
     const r = await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,variables:{id:parseInt(animeId)}})});
     const j = await r.json();
     const m = j?.data?.Media;
@@ -330,6 +365,8 @@ async function loadAnime() {
     document.title = t + ' — KuroSakura';
     document.getElementById('title').textContent = t;
     document.getElementById('meta').innerHTML = `&#9733; ${m.averageScore?(m.averageScore/10).toFixed(1):'?'} &nbsp;·&nbsp; ${m.startDate?.year||''} &nbsp;·&nbsp; ${(m.genres||[]).slice(0,2).join(', ')}`;
+
+    if (m.duration) episodeDurationSec = m.duration * 60;
 
     totalEps = m.episodes || 0;
     const streamEps = m.streamingEpisodes || [];
@@ -407,11 +444,17 @@ function skipIntro() {
   showToast('Skipped to 1:25');
 }
 
+function skipOutro() {
+  showToast('Skipping to next episode...');
+  nextEp();
+}
+
 function play() {
-  document.getElementById('playerBox').innerHTML = `<iframe id="videoFrame" src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer"></iframe>`;
+  document.getElementById('playerBox').innerHTML = `<iframe id="videoFrame" src="${getUrl()}" allowfullscreen allow="autoplay;fullscreen;picture-in-picture" referrerpolicy="no-referrer"></iframe>` + document.getElementById('nextOverlay').outerHTML;
   watched.add(ep);
   document.getElementById('ep-'+ep)?.classList.add('watched');
   saveContinueWatching();
+  startAutoNextTimer();
 }
 
 function saveContinueWatching() {
@@ -428,9 +471,64 @@ function saveContinueWatching() {
   } catch(e) {}
 }
 
+// AUTO-NEXT TIMER (estimate-based, not real video tracking)
+let autoNextTimeout = null;
+let autoNextCountdownInterval = null;
+
+function startAutoNextTimer() {
+  clearAutoNextTimers();
+  const watchStart = Date.now();
+  const effectiveDuration = Math.max(episodeDurationSec - skipSeconds, 30);
+  autoNextTimeout = setTimeout(() => {
+    if (ep < totalEps || ep + 1 <= epData.length) {
+      showNextOverlay();
+    }
+  }, effectiveDuration * 1000);
+}
+
+function clearAutoNextTimers() {
+  if (autoNextTimeout) clearTimeout(autoNextTimeout);
+  if (autoNextCountdownInterval) clearInterval(autoNextCountdownInterval);
+  autoNextTimeout = null;
+  autoNextCountdownInterval = null;
+}
+
+function showNextOverlay() {
+  const overlay = document.getElementById('nextOverlay');
+  if (!overlay) return;
+  const nextEpNum = ep + 1;
+  const nextEpData = epData.find(e => e.num === nextEpNum);
+  document.getElementById('nextOverlayEp').textContent = 'Episode ' + nextEpNum + (nextEpData ? ' — ' + nextEpData.title : '');
+  overlay.classList.add('show');
+
+  let countdown = 10;
+  document.getElementById('nextOverlayTimer').textContent = countdown + 's';
+  autoNextCountdownInterval = setInterval(() => {
+    countdown--;
+    const timerEl = document.getElementById('nextOverlayTimer');
+    if (timerEl) timerEl.textContent = countdown + 's';
+    if (countdown <= 0) {
+      clearInterval(autoNextCountdownInterval);
+      confirmNextNow();
+    }
+  }, 1000);
+}
+
+function confirmNextNow() {
+  clearAutoNextTimers();
+  nextEp();
+}
+
+function cancelAutoNext() {
+  clearAutoNextTimers();
+  const overlay = document.getElementById('nextOverlay');
+  if (overlay) overlay.classList.remove('show');
+}
+
 function selectEp(n) {
   ep = n;
   skipSeconds = 0;
+  clearAutoNextTimers();
   document.querySelectorAll('.ep-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('ep-'+n)?.classList.add('active');
   document.getElementById('epBadge').textContent = 'EP ' + n;
@@ -438,7 +536,7 @@ function selectEp(n) {
   const hasIframe = !!document.getElementById('playerBox').querySelector('iframe');
   if(hasIframe) play();
   else {
-    document.getElementById('playerBox').innerHTML = `<div class="placeholder" onclick="play()"><div class="petals">&#10058; &#10058; &#10058;</div><div class="play-btn">&#9658;</div><div class="play-hint">Tap to watch Episode ${n}</div></div>`;
+    document.getElementById('playerBox').innerHTML = `<div class="placeholder" onclick="play()"><div class="petals">&#10058; &#10058; &#10058;</div><div class="play-btn">&#9658;</div><div class="play-hint">Tap to watch Episode ${n}</div></div>` + document.getElementById('nextOverlay')?.outerHTML || '';
   }
   document.getElementById('playerBox').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -482,12 +580,12 @@ function toggleBookmark() {
   if(i>=0){
     bm.splice(i,1);
     showToast('Removed from bookmarks');
-    document.querySelector('.btn-row .btn:nth-child(6)').innerHTML='&#9825; Save';
+    document.querySelector('.btn-row .btn:nth-child(7)').innerHTML='&#9825; Save';
   } else {
     const title = document.getElementById('title').textContent;
     bm.unshift({id:parseInt(animeId),title,coverImage:{large:''},episodes:totalEps});
     showToast('Saved to bookmarks!');
-    document.querySelector('.btn-row .btn:nth-child(6)').innerHTML='&#9829; Saved';
+    document.querySelector('.btn-row .btn:nth-child(7)').innerHTML='&#9829; Saved';
   }
   saveBookmarks(bm);
 }
