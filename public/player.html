@@ -104,6 +104,8 @@ nav {
   font-family:var(--font-body);
 }
 .stab.active, .stab:hover { background:var(--sakura-glow); border-color:var(--sakura); color:var(--sakura); }
+.stab.checking { opacity:0.5; }
+.stab.unreachable { opacity:0.35; text-decoration:line-through; }
 
 .sidebar {
   border-left:1px solid var(--sakura-border);
@@ -240,7 +242,7 @@ nav {
       <div class="placeholder" id="placeholder" onclick="play()">
         <div class="petals">&#10058; &#10058; &#10058;</div>
         <div class="play-btn">&#9658;</div>
-        <div class="play-hint" id="playHint">Tap to Watch</div>
+        <div class="play-hint" id="playHint">Checking sources...</div>
       </div>
       <div class="next-overlay" id="nextOverlay">
         <div class="next-overlay-title">Up Next</div>
@@ -270,18 +272,18 @@ nav {
         <button class="btn" onclick="openDownload()">&#11015; Download</button>
       </div>
 
-      <div class="server-label">&#10058; Sub</div>
+      <div class="server-label">&#10058; Sub <span id="subStatus" style="font-weight:400;text-transform:none;letter-spacing:0;"></span></div>
       <div class="stabs" id="subTabs">
-        <div class="stab active" onclick="setServer(this,'vidnest')">VidNest</div>
-        <div class="stab" onclick="setServer(this,'vidsrccc')">Server 2</div>
+        <div class="stab active" onclick="setServer(this,'vidnest')" id="tab-vidnest">VidNest</div>
+        <div class="stab" onclick="setServer(this,'vidsrccc')" id="tab-vidsrccc">Server 2</div>
       </div>
       <div class="server-label">&#10058; Dub</div>
       <div class="stabs" id="dubTabs">
-        <div class="stab" onclick="setServer(this,'vidnest-dub')">VidNest Dub</div>
-        <div class="stab" onclick="setServer(this,'vidsrccc-dub')">Server 2 Dub</div>
+        <div class="stab" onclick="setServer(this,'vidnest-dub')" id="tab-vidnest-dub">VidNest Dub</div>
+        <div class="stab" onclick="setServer(this,'vidsrccc-dub')" id="tab-vidsrccc-dub">Server 2 Dub</div>
       </div>
 
-      <div class="kb-hint">⌨️ Shortcuts: ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen player &nbsp;·&nbsp; Auto-next is a timed estimate, not exact video tracking</div>
+      <div class="kb-hint">⌨️ ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; Sources are auto-checked on load; a strikethrough tab means it was unreachable when the page loaded</div>
     </div>
   </div>
 
@@ -342,6 +344,47 @@ let episodeDurationSec = 24 * 60;
 const vidnestServers = ['alfa','beta','gama','sigma','lamda','primesrc','catflix','hexa','delta'];
 let serverIndex = 0;
 
+const providers = [
+  { key: 'vidnest', base: 'https://vidnest.fun' },
+  { key: 'vidsrccc', base: 'https://vidsrc.cc' }
+];
+let reachability = {};
+
+function pingProvider(base, timeoutMs) {
+  return new Promise((resolve) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => { controller.abort(); resolve(false); }, timeoutMs);
+    fetch(base, { mode: 'no-cors', signal: controller.signal })
+      .then(() => { clearTimeout(timer); resolve(true); })
+      .catch(() => { clearTimeout(timer); resolve(false); });
+  });
+}
+
+async function checkAllProviders() {
+  document.getElementById('subStatus').textContent = '(checking sources...)';
+  for (const p of providers) {
+    reachability[p.key] = await pingProvider(p.base, 4000);
+  }
+  document.getElementById('subStatus').textContent = '';
+
+  ['vidnest','vidsrccc'].forEach(key => {
+    const tab = document.getElementById('tab-' + key);
+    const dubTab = document.getElementById('tab-' + key + '-dub');
+    if (reachability[key] === false) {
+      tab?.classList.add('unreachable');
+      dubTab?.classList.add('unreachable');
+    }
+  });
+
+  if (reachability['vidnest'] === false && reachability['vidsrccc'] === true) {
+    server = 'vidsrccc';
+    document.getElementById('tab-vidnest')?.classList.remove('active');
+    document.getElementById('tab-vidsrccc')?.classList.add('active');
+    showToast('VidNest unreachable — switched to Server 2 automatically');
+  }
+  document.getElementById('playHint').textContent = 'Tap to Watch Episode ' + ep;
+}
+
 const fillers = {
   20: new Set([26,97,98,99,100,101,102,103,104,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220]),
   21: new Set([54,55,56,57,58,59,60,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,220,221,222,223,224,225,226]),
@@ -382,7 +425,6 @@ async function loadAnime() {
 
     document.getElementById('epCount').textContent = count + ' episodes';
     renderEps(epData);
-    document.getElementById('playHint').textContent = 'Tap to watch Episode ' + ep;
   } catch(e) {
     animeTitleCache = 'Anime #' + animeId;
     document.getElementById('title').textContent = animeTitleCache;
@@ -391,7 +433,6 @@ async function loadAnime() {
     epData = Array.from({length:24},(_,i)=>({num:i+1,title:'Episode '+(i+1),filler:false}));
     document.getElementById('epCount').textContent = '24 episodes';
     renderEps(epData);
-    document.getElementById('playHint').textContent = 'Tap to Watch Episode ' + ep;
   }
 }
 
@@ -471,18 +512,14 @@ function saveContinueWatching() {
   } catch(e) {}
 }
 
-// AUTO-NEXT TIMER (estimate-based, not real video tracking)
 let autoNextTimeout = null;
 let autoNextCountdownInterval = null;
 
 function startAutoNextTimer() {
   clearAutoNextTimers();
-  const watchStart = Date.now();
   const effectiveDuration = Math.max(episodeDurationSec - skipSeconds, 30);
   autoNextTimeout = setTimeout(() => {
-    if (ep < totalEps || ep + 1 <= epData.length) {
-      showNextOverlay();
-    }
+    if (ep < totalEps || ep + 1 <= epData.length) showNextOverlay();
   }, effectiveDuration * 1000);
 }
 
@@ -536,7 +573,7 @@ function selectEp(n) {
   const hasIframe = !!document.getElementById('playerBox').querySelector('iframe');
   if(hasIframe) play();
   else {
-    document.getElementById('playerBox').innerHTML = `<div class="placeholder" onclick="play()"><div class="petals">&#10058; &#10058; &#10058;</div><div class="play-btn">&#9658;</div><div class="play-hint">Tap to watch Episode ${n}</div></div>` + document.getElementById('nextOverlay')?.outerHTML || '';
+    document.getElementById('playerBox').innerHTML = `<div class="placeholder" onclick="play()"><div class="petals">&#10058; &#10058; &#10058;</div><div class="play-btn">&#9658;</div><div class="play-hint">Tap to watch Episode ${n}</div></div>` + document.getElementById('nextOverlay').outerHTML;
   }
   document.getElementById('playerBox').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -638,7 +675,6 @@ function showToast(msg) {
   toastT = setTimeout(()=>{ t.style.transform='translateX(-50%) translateY(80px)'; }, 2500);
 }
 
-// KEYBOARD SHORTCUTS
 document.addEventListener('keydown', function(e) {
   if (e.target.tagName === 'INPUT') return;
   if (e.key === 'ArrowRight') { nextEp(); }
@@ -651,8 +687,8 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.getElementById('epBadge').textContent = 'EP ' + ep;
-document.getElementById('playHint').textContent = 'Tap to Watch Episode ' + ep;
 loadAnime();
+checkAllProviders();
 </script>
 </body>
 </html>
