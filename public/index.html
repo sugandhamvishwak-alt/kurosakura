@@ -166,6 +166,19 @@ nav {
 .trend-card img { width:100%; aspect-ratio:2/3; object-fit:cover; display:block; transition:transform 0.3s; }
 .trend-item:hover .trend-card img { transform:scale(1.05); }
 
+/* NEW EPISODES ROW */
+.recent-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none; }
+.recent-row::-webkit-scrollbar { display:none; }
+.recent-card { flex-shrink:0; width:150px; cursor:pointer; border-radius:8px; overflow:hidden; background:var(--card); border:1px solid var(--sakura-border); transition:all 0.2s; }
+.recent-card:hover { transform:translateY(-4px); border-color:var(--sakura-border2); box-shadow:0 10px 28px rgba(0,0,0,0.7); }
+.recent-thumb { position:relative; aspect-ratio:2/3; overflow:hidden; }
+.recent-thumb img { width:100%; height:100%; object-fit:cover; transition:transform 0.3s; }
+.recent-card:hover .recent-thumb img { transform:scale(1.05); }
+.recent-ep-badge { position:absolute; top:6px; left:6px; background:var(--crimson); color:#fff; font-size:9px; font-weight:700; letter-spacing:0.5px; padding:2px 7px; border-radius:3px; }
+.recent-time-badge { position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.8); color:var(--text2); font-size:9px; padding:2px 6px; border-radius:3px; }
+.recent-info { padding:8px 9px 10px; }
+.recent-title { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 /* ANIME GRID */
 .anime-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:12px; }
 .anime-card { cursor:pointer; border-radius:8px; overflow:hidden; background:var(--card); border:1px solid var(--sakura-border); transition:all 0.2s; position:relative; }
@@ -388,8 +401,19 @@ nav {
     <div class="genre-pill" onclick="filterGenre(this,'Mecha')">Mecha</div>
   </div>
 
-  <!-- Trending -->
+  <!-- New Episodes -->
   <div class="section">
+    <div class="section-hd">
+      <div class="section-title">New Episodes</div>
+      <button class="see-all" onclick="showPage('schedule')">Full Schedule &rarr;</button>
+    </div>
+    <div class="recent-row" id="recentRow">
+      <div class="loading-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Trending -->
+  <div class="section" style="padding-top:0">
     <div class="section-hd">
       <div class="section-title">Trending This Season</div>
       <button class="see-all" onclick="showPage('search')">See All &rarr;</button>
@@ -660,6 +684,7 @@ const Q_TOP = `query{Page(perPage:12){media(sort:SCORE_DESC,type:ANIME,status:FI
 const Q_SEARCH = `query($s:String){Page(perPage:20){media(search:$s,type:ANIME){id title{romaji english}coverImage{large}averageScore episodes}}}`;
 const Q_GENRE = `query($g:String){Page(perPage:18){media(genre:$g,type:ANIME,sort:POPULARITY_DESC){id title{romaji english}coverImage{large}averageScore episodes}}}`;
 const Q_MOVIES = `query($g:String){Page(perPage:18){media(type:ANIME,format:MOVIE,sort:POPULARITY_DESC,genre:$g){id title{romaji english}coverImage{large}averageScore episodes}}}`;
+const Q_RECENT = `query{Page(perPage:24){airingSchedules(sort:TIME_DESC,notYetAired:false){episode airingAt media{id title{romaji english}coverImage{large}episodes}}}}`;
 
 // ─── CARD ───
 function makeCard(a) {
@@ -690,6 +715,46 @@ function buildGrid(id, list) {
   const g = document.getElementById(id);
   if(!list||!list.length){g.innerHTML='<div class="error-msg">No results found.</div>';return;}
   g.innerHTML = list.map(a=>makeCard(a)).join('');
+}
+
+// ─── RECENT EPISODES ───
+function timeAgo(unixSec) {
+  const diffMs = Date.now() - (unixSec * 1000);
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+function makeRecentCard(sched) {
+  const m = sched.media;
+  const title = m.title?.english || m.title?.romaji || 'Unknown';
+  const cover = m.coverImage?.large || '';
+  return `<div class="recent-card" onclick="goPlayer(${m.id},${sched.episode})">
+    <div class="recent-thumb">
+      <img src="${cover}" alt="" loading="lazy">
+      <div class="recent-ep-badge">EP ${sched.episode}</div>
+      <div class="recent-time-badge">${timeAgo(sched.airingAt)}</div>
+    </div>
+    <div class="recent-info">
+      <div class="recent-title">${title}</div>
+    </div>
+  </div>`;
+}
+
+function buildRecentRow(schedules) {
+  const seen = new Set();
+  const deduped = [];
+  for (const s of schedules) {
+    if (!s.media || seen.has(s.media.id)) continue;
+    seen.add(s.media.id);
+    deduped.push(s);
+  }
+  const row = document.getElementById('recentRow');
+  if (!deduped.length) { row.innerHTML = '<div class="error-msg">No recent episodes found.</div>'; return; }
+  row.innerHTML = deduped.slice(0,16).map(s => makeRecentCard(s)).join('');
 }
 
 // ─── HERO SLIDER ───
@@ -748,18 +813,21 @@ function resetSlider() { clearInterval(slideTimer); startSlider(); }
 // ─── INIT HOME ───
 async function initHome() {
   try {
-    const [trending, popular, top] = await Promise.all([
+    const [trending, popular, top, recent] = await Promise.all([
       anilist(Q_TRENDING),
       anilist(Q_POPULAR),
-      anilist(Q_TOP)
+      anilist(Q_TOP),
+      anilist(Q_RECENT)
     ]);
     buildHero(trending.Page.media);
     buildTrending(trending.Page.media);
     buildGrid('popularGrid', popular.Page.media);
     buildGrid('topGrid', top.Page.media);
+    buildRecentRow(recent.Page.airingSchedules);
   } catch(e) {
     document.getElementById('heroSlides').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Could not load. Check connection.</div>';
     document.getElementById('popularGrid').innerHTML = '<div class="error-msg">Failed to load.</div>';
+    document.getElementById('recentRow').innerHTML = '<div class="error-msg">Failed to load.</div>';
   }
 }
 
@@ -840,8 +908,8 @@ async function initBrowse() {
 }
 
 // ─── PLAYER NAV ───
-function goPlayer(id) {
-  window.location.href = 'player.html?id=' + id + '&ep=1';
+function goPlayer(id, ep) {
+  window.location.href = 'player.html?id=' + id + '&ep=' + (ep || 1);
 }
 
 // ─── PAGE SWITCH ───
