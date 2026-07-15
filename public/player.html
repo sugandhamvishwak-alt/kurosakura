@@ -104,7 +104,6 @@ nav {
   font-family:var(--font-body);
 }
 .stab.active, .stab:hover { background:var(--sakura-glow); border-color:var(--sakura); color:var(--sakura); }
-.stab.checking { opacity:0.5; }
 .stab.unreachable { opacity:0.35; text-decoration:line-through; }
 
 .sidebar {
@@ -283,7 +282,7 @@ nav {
         <div class="stab" onclick="setServer(this,'vidsrccc-dub')" id="tab-vidsrccc-dub">Server 2 Dub</div>
       </div>
 
-      <div class="kb-hint">⌨️ ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; Sources are auto-checked on load; a strikethrough tab means it was unreachable when the page loaded</div>
+      <div class="kb-hint">⌨️ ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; Popup/tab-hijack protection is active</div>
     </div>
   </div>
 
@@ -689,6 +688,34 @@ document.addEventListener('keydown', function(e) {
 document.getElementById('epBadge').textContent = 'EP ' + ep;
 loadAnime();
 checkAllProviders();
+
+// ─── POPUNDER/POPUP MITIGATION ───
+// Ads inside third-party embeds sometimes try to open a new tab/window.
+// We can't reach inside the iframe (cross-origin security), but we CAN
+// snap focus back to this tab if one steals it unexpectedly.
+let userInitiatedAction = false;
+
+document.addEventListener('mousedown', () => {
+  userInitiatedAction = true;
+  setTimeout(() => { userInitiatedAction = false; }, 500);
+});
+
+window.addEventListener('blur', () => {
+  if (!userInitiatedAction) {
+    setTimeout(() => {
+      window.focus();
+    }, 60);
+  }
+});
+
+const _originalOpen = window.open;
+window.open = function(...args) {
+  if (userInitiatedAction) {
+    return _originalOpen.apply(window, args);
+  }
+  console.warn('Blocked a non-user-initiated popup attempt.');
+  return null;
+};
 </script>
 </body>
 </html>
