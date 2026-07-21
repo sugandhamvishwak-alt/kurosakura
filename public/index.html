@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KuroSakura — Watch Anime Free</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a0008">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -54,6 +56,7 @@ nav {
   display:flex; align-items:center; background:var(--elevated);
   border:1px solid var(--sakura-border); border-radius:6px; padding:6px 12px; gap:8px;
   transition:border-color 0.2s;
+  position:relative;
 }
 .search-wrap:focus-within { border-color:var(--sakura); }
 .search-wrap input { background:none; border:none; outline:none; color:var(--text); font-family:var(--font-body); font-size:13px; width:130px; }
@@ -65,6 +68,22 @@ nav {
 }
 .nav-icon-btn:hover { border-color:var(--sakura); color:var(--sakura); background:var(--sakura-glow); }
 .nav-icon-btn.active { border-color:var(--sakura); color:var(--sakura); background:var(--sakura-glow); }
+
+/* SEARCH DROPDOWN */
+.search-dropdown {
+  position:absolute; top:calc(100% + 6px); left:0; right:0;
+  background:var(--deep); border:1px solid var(--sakura-border2);
+  border-radius:8px; max-height:340px; overflow-y:auto; z-index:300;
+  display:none; box-shadow:0 12px 30px rgba(0,0,0,0.6);
+  width:280px;
+}
+.search-dropdown.open { display:block; }
+.sd-item { display:flex; gap:10px; padding:8px 10px; cursor:pointer; align-items:center; }
+.sd-item:hover { background:var(--elevated); }
+.sd-item img { width:34px; height:48px; object-fit:cover; border-radius:4px; flex-shrink:0; }
+.sd-item-title { font-size:12px; font-weight:600; }
+.sd-item-meta { font-size:10px; color:var(--text3); }
+.sd-empty { padding:14px; font-size:12px; color:var(--text3); text-align:center; }
 
 /* LOGIN MODAL */
 .modal-overlay {
@@ -361,7 +380,10 @@ nav {
   <div class="nav-right">
     <div class="search-wrap">
       <span style="color:var(--text3);font-size:14px">&#128269;</span>
-      <input type="text" id="navSearch" placeholder="Search anime..." onkeydown="if(event.key==='Enter')navGo()">
+      <input type="text" id="navSearch" placeholder="Search anime..." autocomplete="off"
+             oninput="onNavSearchInput()"
+             onkeydown="if(event.key==='Enter')navGo()">
+      <div class="search-dropdown" id="navSearchDropdown"></div>
     </div>
     <button class="nav-icon-btn mobile-search-icon" onclick="toggleMobileSearch()" title="Search" style="display:none">&#128269;</button>
     <button class="nav-icon-btn" onclick="showPage('bookmarks')" title="Bookmarks" id="bmNavBtn">&#9825;</button>
@@ -434,6 +456,14 @@ nav {
     </div>
   </div>
 
+  <!-- Recommended For You -->
+  <div class="section" id="recsSection" style="padding-top:0; display:none">
+    <div class="section-hd">
+      <div class="section-title">Recommended For You</div>
+    </div>
+    <div class="anime-grid" id="recsGrid"></div>
+  </div>
+
   <!-- Schedule preview -->
   <div class="section" style="padding-top:0">
     <div class="section-hd">
@@ -491,6 +521,19 @@ nav {
       <span style="color:var(--text3);font-size:18px">&#128269;</span>
       <input type="text" id="searchInput" placeholder="Search anime title..." onkeydown="if(event.key==='Enter')doSearch()">
       <button onclick="doSearch()">Search</button>
+    </div>
+    <div class="genre-strip" id="browseGenreStrip" style="padding:0 0 16px">
+      <div class="genre-pill active" onclick="setBrowseFilter(this,'genre','')">All</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Action')">Action</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Romance')">Romance</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Fantasy')">Fantasy</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Isekai')">Isekai</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Horror')">Horror</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Sci-Fi')">Sci-Fi</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Slice of Life')">Slice of Life</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Sports')">Sports</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Comedy')">Comedy</div>
+      <div class="genre-pill" onclick="setBrowseFilter(this,'genre','Mecha')">Mecha</div>
     </div>
     <div id="searchResultLabel" class="section-title" style="margin-bottom:16px">Popular Anime</div>
     <div class="anime-grid" id="browseGrid">
@@ -566,7 +609,7 @@ nav {
     </div>
     <div class="sched-card">
       <div class="sched-card-day">Thursday</div>
-      <div class="sched-ep-row" onclick="goPlayer(127230)"><div class="sched-ep-info"><div class="sched-ep-title">Chainsaw Man</div><div class="sched-ep-sub">Rerun · Sub + Dub</div></div></div>
+      <div class="sched-ep-row" onclick="goPlayer(127230)"><div class="sched-ep-info"><div class="sched-ep-title">Chainsaw Man</div><div class="sched-ep-sub">Rerun · Sub</div></div></div>
       <div class="sched-ep-row" onclick="goPlayer(140960)"><div class="sched-ep-info"><div class="sched-ep-title">Vinland Saga S2</div><div class="sched-ep-sub">Rerun · Sub</div></div></div>
     </div>
   </div>
@@ -682,6 +725,7 @@ const Q_TRENDING = `query{Page(perPage:6){media(sort:TRENDING_DESC,type:ANIME,st
 const Q_POPULAR = `query{Page(perPage:12){media(sort:POPULARITY_DESC,type:ANIME,status_in:[RELEASING,FINISHED]){id title{romaji english}coverImage{large}averageScore episodes}}}`;
 const Q_TOP = `query{Page(perPage:12){media(sort:SCORE_DESC,type:ANIME,status:FINISHED){id title{romaji english}coverImage{large}averageScore episodes}}}`;
 const Q_SEARCH = `query($s:String){Page(perPage:20){media(search:$s,type:ANIME){id title{romaji english}coverImage{large}averageScore episodes}}}`;
+const Q_SEARCH_MINI = `query($s:String){Page(perPage:6){media(search:$s,type:ANIME){id title{romaji english}coverImage{large}averageScore episodes}}}`;
 const Q_GENRE = `query($g:String){Page(perPage:18){media(genre:$g,type:ANIME,sort:POPULARITY_DESC){id title{romaji english}coverImage{large}averageScore episodes}}}`;
 const Q_MOVIES = `query($g:String){Page(perPage:18){media(type:ANIME,format:MOVIE,sort:POPULARITY_DESC,genre:$g){id title{romaji english}coverImage{large}averageScore episodes}}}`;
 const Q_RECENT = `query{Page(perPage:24){airingSchedules(sort:TIME_DESC,notYetAired:false){episode airingAt media{id title{romaji english}coverImage{large}episodes}}}}`;
@@ -824,6 +868,7 @@ async function initHome() {
     buildGrid('popularGrid', popular.Page.media);
     buildGrid('topGrid', top.Page.media);
     buildRecentRow(recent.Page.airingSchedules);
+    buildRecommendations();
   } catch(e) {
     document.getElementById('heroSlides').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">Could not load. Check connection.</div>';
     document.getElementById('popularGrid').innerHTML = '<div class="error-msg">Failed to load.</div>';
@@ -839,9 +884,33 @@ function buildTrending(list) {
     </div>`).join('');
 }
 
-// ─── GENRE FILTER ───
+// ─── RECOMMENDATIONS (based on bookmarked genres) ───
+async function buildRecommendations() {
+  const bm = getBookmarks();
+  if (!bm.length) return;
+
+  const genreQuery = `query($ids:[Int]){Page(perPage:${bm.length}){media(id_in:$ids){id genres}}}`;
+  try {
+    const gData = await anilist(genreQuery, {ids: bm.map(b => b.id)});
+    const genreCount = {};
+    gData.Page.media.forEach(m => (m.genres||[]).forEach(g => genreCount[g] = (genreCount[g]||0)+1));
+    const topGenres = Object.entries(genreCount).sort((a,b)=>b[1]-a[1]).slice(0,2).map(g=>g[0]);
+    if (!topGenres.length) return;
+
+    const excludeIds = bm.map(b => b.id);
+    const rData = await anilist(Q_GENRE, {g: topGenres[0]});
+    const filtered = rData.Page.media.filter(a => !excludeIds.includes(a.id));
+
+    if (filtered.length) {
+      document.getElementById('recsSection').style.display = 'block';
+      buildGrid('recsGrid', filtered.slice(0,12));
+    }
+  } catch(e) {}
+}
+
+// ─── GENRE FILTER (home) ───
 async function filterGenre(el, genre) {
-  document.querySelectorAll('.genre-pill').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('#home-page .genre-pill').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('popularGrid').innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
   try {
@@ -852,26 +921,87 @@ async function filterGenre(el, genre) {
   }
 }
 
+// ─── BROWSE PAGE FILTER STATE (genre + search combined) ───
+let browseFilters = { genre: '', search: '', sort: 'POPULARITY_DESC' };
+
+function setBrowseFilter(el, key, value) {
+  browseFilters[key] = value;
+  el.parentElement.querySelectorAll('.genre-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  runBrowseQuery();
+}
+
+async function runBrowseQuery() {
+  document.getElementById('browseGrid').innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
+  const q = `query($g:String,$s:String,$sort:[MediaSort]){Page(perPage:24){media(type:ANIME,genre:$g,search:$s,sort:$sort){id title{romaji english}coverImage{large}averageScore episodes}}}`;
+  const vars = {
+    g: browseFilters.genre || null,
+    s: browseFilters.search || null,
+    sort: [browseFilters.sort]
+  };
+  try {
+    const data = await anilist(q, vars);
+    buildGrid('browseGrid', data.Page.media);
+    document.getElementById('searchResultLabel').textContent =
+      browseFilters.search ? `Results for "${browseFilters.search}"` :
+      browseFilters.genre ? browseFilters.genre + ' Anime' : 'Popular Anime';
+  } catch(e) {
+    document.getElementById('browseGrid').innerHTML = '<div class="error-msg">Failed to load.</div>';
+  }
+}
+
 // ─── SEARCH ───
 function navGo() {
   const q = document.getElementById('navSearch').value.trim();
   if(!q) return;
+  document.getElementById('navSearchDropdown')?.classList.remove('open');
   showPage('search');
   document.getElementById('searchInput').value = q;
   doSearch();
 }
-async function doSearch() {
+function doSearch() {
   const q = document.getElementById('searchInput').value.trim();
-  if(!q) return;
-  document.getElementById('searchResultLabel').textContent = 'Results for "' + q + '"';
-  document.getElementById('browseGrid').innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
-  try {
-    const data = await anilist(Q_SEARCH,{s:q});
-    buildGrid('browseGrid', data.Page.media);
-  } catch(e) {
-    document.getElementById('browseGrid').innerHTML = '<div class="error-msg">Search failed.</div>';
-  }
+  browseFilters.search = q;
+  runBrowseQuery();
 }
+
+// ─── INSTANT SEARCH DROPDOWN ───
+let navSearchDebounce;
+function onNavSearchInput() {
+  clearTimeout(navSearchDebounce);
+  const q = document.getElementById('navSearch').value.trim();
+  const dd = document.getElementById('navSearchDropdown');
+  if (!q) { dd.classList.remove('open'); return; }
+  navSearchDebounce = setTimeout(() => liveSearch(q), 250);
+}
+
+async function liveSearch(q) {
+  const dd = document.getElementById('navSearchDropdown');
+  try {
+    const data = await anilist(Q_SEARCH_MINI, {s:q});
+    const list = data.Page.media;
+    if (!list.length) { dd.innerHTML = '<div class="sd-empty">No results</div>'; dd.classList.add('open'); return; }
+    dd.innerHTML = list.map(a => {
+      const title = a.title.english || a.title.romaji;
+      const score = a.averageScore ? (a.averageScore/10).toFixed(1) : '?';
+      return `<div class="sd-item" onclick="goPlayer(${a.id})">
+        <img src="${a.coverImage.large}" alt="">
+        <div>
+          <div class="sd-item-title">${title}</div>
+          <div class="sd-item-meta">★ ${score} · ${a.episodes||'?'} eps</div>
+        </div>
+      </div>`;
+    }).join('');
+    dd.classList.add('open');
+  } catch(e) { dd.classList.remove('open'); }
+}
+
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.search-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('navSearchDropdown')?.classList.remove('open');
+  }
+});
 
 // ─── MOVIES ───
 async function initMovies() {
@@ -900,11 +1030,8 @@ async function filterMovie(el, genre) {
 let browseLoaded = false;
 async function initBrowse() {
   if(browseLoaded) return;
-  try {
-    const data = await anilist(Q_POPULAR);
-    buildGrid('browseGrid', data.Page.media);
-    browseLoaded = true;
-  } catch(e) {}
+  await runBrowseQuery();
+  browseLoaded = true;
 }
 
 // ─── PLAYER NAV ───
@@ -950,6 +1077,16 @@ function mobileSearchGo() {
 
 // ─── START ───
 initHome();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.error('SW registration failed:', err));
+  });
+}
 </script>
 </body>
 </html>
