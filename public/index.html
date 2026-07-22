@@ -7,6 +7,7 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0008">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --void: #000000;
@@ -355,13 +356,15 @@ nav {
     <button class="modal-close" onclick="closeModal()">&times;</button>
     <div class="modal-title" id="modalTitle">Kuro<span>Sakura</span></div>
     <div class="modal-sub" id="modalSub">Sign in to save your watchlist</div>
-    <input class="modal-input" type="text" id="modalUsername" placeholder="Username or Email">
+    <input class="modal-input" type="email" id="modalUsername" placeholder="Email">
     <input class="modal-input" type="password" id="modalPassword" placeholder="Password">
     <div id="modalNameWrap" style="display:none">
       <input class="modal-input" type="text" id="modalName" placeholder="Display Name">
     </div>
     <button class="modal-btn" onclick="handleAuth()" id="modalBtn">Sign In</button>
     <div class="modal-divider">or</div>
+    <button class="modal-btn" style="background:#4285F4;margin-bottom:8px" onclick="loginWithProvider('google')">Continue with Google</button>
+    <button class="modal-btn" style="background:#5865F2;margin-bottom:12px" onclick="loginWithProvider('discord')">Continue with Discord</button>
     <div class="modal-switch" id="modalSwitch">
       Don't have an account? <span onclick="toggleAuthMode()">Sign Up</span>
     </div>
@@ -634,6 +637,11 @@ nav {
 <div class="toast" id="toast"></div>
 
 <script>
+// ─── SUPABASE CLIENT ───
+const SUPABASE_URL = 'https://yhejdjdbrsyxoxuylvun.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_GyGf7BFmc01YMOYYuXDWdQ_nZ2TaoEg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // ─── AUTH STATE ───
 let authUser = null;
 let authMode = 'login';
@@ -655,20 +663,66 @@ function toggleAuthMode() {
     : 'Don\'t have an account? <span onclick="toggleAuthMode()">Sign Up</span>';
   document.getElementById('modalNameWrap').style.display = isSignup ? 'block' : 'none';
 }
-function handleAuth() {
-  const u = document.getElementById('modalUsername').value.trim();
-  const p = document.getElementById('modalPassword').value.trim();
-  if (!u || !p) { showToast('Please fill in all fields'); return; }
-  authUser = { username: u, name: document.getElementById('modalName')?.value || u };
-  document.getElementById('loginBtn').textContent = u.slice(0,8);
-  document.getElementById('loginBtn').style.background = 'var(--sakura-glow)';
-  document.getElementById('loginBtn').style.borderColor = 'var(--sakura)';
-  document.getElementById('loginBtn').style.color = 'var(--sakura)';
-  closeModal();
-  showToast('Welcome, ' + authUser.name + '!');
+
+async function handleAuth() {
+  const email = document.getElementById('modalUsername').value.trim();
+  const password = document.getElementById('modalPassword').value.trim();
+  if (!email || !password) { showToast('Please fill in all fields'); return; }
+
+  if (authMode === 'signup') {
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) { showToast(error.message); return; }
+    showToast('Account created! Check your email to confirm, then sign in.');
+    toggleAuthMode();
+  } else {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { showToast(error.message); return; }
+    closeModal();
+  }
 }
 
-// ─── BOOKMARKS ───
+async function loginWithProvider(provider) {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) showToast(error.message);
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  authUser = null;
+  updateLoginUI();
+  showToast('Signed out');
+}
+
+function updateLoginUI() {
+  const btn = document.getElementById('loginBtn');
+  if (authUser) {
+    btn.textContent = (authUser.email || 'Account').split('@')[0].slice(0,10);
+    btn.style.background = 'var(--sakura-glow)';
+    btn.style.borderColor = 'var(--sakura)';
+    btn.style.color = 'var(--sakura)';
+    btn.onclick = logout;
+  } else {
+    btn.textContent = 'Login';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.onclick = openModal;
+  }
+}
+
+// React to auth state changes (covers OAuth redirect return too)
+sb.auth.onAuthStateChange(async (event, session) => {
+  authUser = session?.user || null;
+  updateLoginUI();
+  if (authUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+    await syncBookmarksOnLogin();
+  }
+});
+
+// ─── BOOKMARKS (localStorage + Supabase sync) ───
 function getBookmarks() {
   try { return JSON.parse(localStorage.getItem('ks_bm') || '[]'); }
   catch(e) { return []; }
@@ -677,9 +731,45 @@ function saveBookmarks(b) {
   try { localStorage.setItem('ks_bm', JSON.stringify(b)); } catch(e) {}
 }
 function isBookmarked(id) { return getBookmarks().some(b => b.id === id); }
-function toggleBookmark(a) {
+
+async function syncBookmarksOnLogin() {
+  try {
+    const { data: remote, error } = await sb.from('bookmarks').select('*').eq('user_id', authUser.id);
+    if (error) throw error;
+    const local = getBookmarks();
+    const remoteIds = new Set((remote||[]).map(r => r.anime_id));
+
+    // Push local-only bookmarks up to Supabase
+    const toPush = local.filter(b => !remoteIds.has(b.id));
+    for (const b of toPush) {
+      await sb.from('bookmarks').upsert({
+        user_id: authUser.id, anime_id: b.id, title: b.title,
+        cover: b.coverImage?.large || '', episodes: b.episodes
+      }, { onConflict: 'user_id,anime_id' });
+    }
+
+    // Merge remote into local view
+    const merged = [...local];
+    (remote||[]).forEach(r => {
+      if (!merged.some(b => b.id === r.anime_id)) {
+        merged.unshift({ id: r.anime_id, title: r.title, episodes: r.episodes, coverImage: { large: r.cover } });
+      }
+    });
+    saveBookmarks(merged);
+    if (document.getElementById('bookmarks-page')?.classList.contains('active')) renderBookmarks();
+    document.querySelectorAll('.card-bm-btn').forEach(btn => {
+      const id = parseInt(btn.dataset.id);
+      const saved = isBookmarked(id);
+      btn.innerHTML = saved ? '&#9829;' : '&#9825;';
+      btn.classList.toggle('saved', saved);
+    });
+  } catch(e) { console.error('Bookmark sync failed:', e); }
+}
+
+async function toggleBookmark(a) {
   let bm = getBookmarks();
   const i = bm.findIndex(b => b.id === a.id);
+  const nowSaved = i < 0;
   if (i >= 0) { bm.splice(i, 1); showToast('Removed from bookmarks'); }
   else { bm.unshift(a); showToast('&#9825; Saved to bookmarks!'); }
   saveBookmarks(bm);
@@ -689,6 +779,19 @@ function toggleBookmark(a) {
     btn.classList.toggle('saved', saved);
   });
   if (document.getElementById('bookmarks-page').classList.contains('active')) renderBookmarks();
+
+  if (authUser) {
+    try {
+      if (nowSaved) {
+        await sb.from('bookmarks').upsert({
+          user_id: authUser.id, anime_id: a.id, title: a.title,
+          cover: a.coverImage?.large || '', episodes: a.episodes
+        }, { onConflict: 'user_id,anime_id' });
+      } else {
+        await sb.from('bookmarks').delete().eq('user_id', authUser.id).eq('anime_id', a.id);
+      }
+    } catch(e) { console.error('Bookmark cloud save failed:', e); }
+  }
 }
 function renderBookmarks() {
   const bm = getBookmarks();
