@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,6 +7,7 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0a0008">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --void: #000000;
@@ -223,6 +224,36 @@ nav {
 }
 .dl-site-btn:hover { border-color:var(--sakura); color:var(--sakura); background:var(--sakura-glow); }
 .dl-site-badge { font-size:10px; color:var(--text3); background:var(--card); padding:2px 7px; border-radius:3px; }
+
+/* RATINGS + COMMENTS */
+.cr-section { margin-top:24px; padding-top:20px; border-top:1px solid var(--sakura-border); }
+.cr-title { font-family:var(--font-ui); font-size:16px; font-weight:700; margin-bottom:14px; }
+.rating-row { display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.rating-avg { font-size:22px; font-weight:700; color:#f4c430; font-family:var(--font-ui); }
+.rating-count { font-size:11px; color:var(--text3); }
+.rating-stars { display:flex; gap:3px; }
+.rating-star { font-size:20px; cursor:pointer; color:var(--text3); transition:color 0.15s; }
+.rating-star.filled { color:#f4c430; }
+.comment-box { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+.comment-box textarea {
+  width:100%; background:var(--elevated); border:1px solid var(--sakura-border);
+  color:var(--text); padding:10px 12px; border-radius:6px; font-family:var(--font-body);
+  font-size:13px; outline:none; resize:vertical; min-height:60px; transition:border-color 0.2s;
+}
+.comment-box textarea:focus { border-color:var(--sakura); }
+.comment-box button {
+  align-self:flex-end; background:var(--crimson); border:none; color:#fff;
+  padding:8px 18px; border-radius:6px; cursor:pointer; font-size:13px;
+  font-weight:600; font-family:var(--font-body); transition:background 0.2s;
+}
+.comment-box button:hover { background:var(--crimson-dim); }
+.comment-item { padding:12px 0; border-bottom:1px solid var(--sakura-border); }
+.comment-item:last-child { border-bottom:none; }
+.comment-head { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.comment-user { font-size:12px; font-weight:700; color:var(--sakura); }
+.comment-time { font-size:10px; color:var(--text3); }
+.comment-body { font-size:13px; color:var(--text2); line-height:1.5; }
+.cr-login-hint { font-size:12px; color:var(--text3); margin-bottom:16px; }
   .layout { grid-template-columns:1fr; }
   .sidebar { max-height:300px; border-left:none; border-top:1px solid var(--sakura-border); position:static; }
   .main { padding:12px 14px; }
@@ -286,6 +317,23 @@ nav {
       </div>
 
       <div class="kb-hint">⌨️ ← previous ep &nbsp;·&nbsp; → next ep &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; Sources are auto-checked on load; a strikethrough tab means it was unreachable when the page loaded</div>
+
+      <div class="cr-section">
+        <div class="cr-title">Rating</div>
+        <div class="rating-row">
+          <div class="rating-avg" id="ratingAvg">–</div>
+          <div class="rating-count" id="ratingCount">No ratings yet</div>
+          <div class="rating-stars" id="ratingStars"></div>
+        </div>
+
+        <div class="cr-title">Comments</div>
+        <div id="crLoginHint" class="cr-login-hint" style="display:none">Log in from the homepage to rate or comment.</div>
+        <div class="comment-box" id="commentBox" style="display:none">
+          <textarea id="commentInput" placeholder="Share your thoughts on this episode..."></textarea>
+          <button onclick="postComment()">Post Comment</button>
+        </div>
+        <div id="commentsList"></div>
+      </div>
     </div>
   </div>
 
@@ -333,6 +381,23 @@ nav {
 </div>
 
 <script>
+// ─── SUPABASE CLIENT ───
+const SUPABASE_URL = 'https://yhejdjdbrsyxoxuylvun.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_GyGf7BFmc01YMOYYuXDWdQ_nZ2TaoEg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let authUser = null;
+
+sb.auth.onAuthStateChange((event, session) => {
+  authUser = session?.user || null;
+  updateAuthUI();
+  loadRatingAndComments();
+});
+
+function updateAuthUI() {
+  document.getElementById('crLoginHint').style.display = authUser ? 'none' : 'block';
+  document.getElementById('commentBox').style.display = authUser ? 'flex' : 'none';
+}
+
 const params = new URLSearchParams(location.search);
 const animeId = params.get('id') || '20';
 let ep = parseInt(params.get('ep')) || 1;
@@ -530,6 +595,12 @@ function saveContinueWatching() {
     };
     localStorage.setItem('ks_continue', JSON.stringify(data));
   } catch(e) {}
+
+  if (authUser) {
+    sb.from('continue_watching').upsert({
+      user_id: authUser.id, anime_id: parseInt(animeId), episode: ep, updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,anime_id' }).then(({error}) => { if(error) console.error('Progress sync failed:', error); });
+  }
 }
 
 let autoNextTimeout = null;
@@ -634,17 +705,123 @@ function isBookmarked() { return getBookmarks().some(b=>b.id==animeId); }
 function toggleBookmark() {
   let bm = getBookmarks();
   const i = bm.findIndex(b=>b.id==animeId);
+  const nowSaved = i < 0;
+  const title = document.getElementById('title').textContent;
   if(i>=0){
     bm.splice(i,1);
     showToast('Removed from bookmarks');
     document.querySelector('.btn-row .btn:nth-child(7)').innerHTML='&#9825; Save';
   } else {
-    const title = document.getElementById('title').textContent;
     bm.unshift({id:parseInt(animeId),title,coverImage:{large:''},episodes:totalEps});
     showToast('Saved to bookmarks!');
     document.querySelector('.btn-row .btn:nth-child(7)').innerHTML='&#9829; Saved';
   }
   saveBookmarks(bm);
+
+  if (authUser) {
+    if (nowSaved) {
+      sb.from('bookmarks').upsert({
+        user_id: authUser.id, anime_id: parseInt(animeId), title, cover: '', episodes: totalEps
+      }, { onConflict: 'user_id,anime_id' }).then(({error}) => { if(error) console.error(error); });
+    } else {
+      sb.from('bookmarks').delete().eq('user_id', authUser.id).eq('anime_id', parseInt(animeId))
+        .then(({error}) => { if(error) console.error(error); });
+    }
+  }
+}
+
+// ─── RATINGS + COMMENTS ───
+let myRating = 0;
+
+function renderStars() {
+  const el = document.getElementById('ratingStars');
+  el.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const s = document.createElement('span');
+    s.className = 'rating-star' + (i <= Math.round(myRating/2) ? ' filled' : '');
+    s.textContent = '★';
+    s.onclick = () => submitRating(i * 2);
+    el.appendChild(s);
+  }
+}
+
+async function submitRating(score) {
+  if (!authUser) { showToast('Log in to rate this anime'); return; }
+  myRating = score;
+  renderStars();
+  const { error } = await sb.from('ratings').upsert({
+    anime_id: parseInt(animeId), user_id: authUser.id, score
+  }, { onConflict: 'anime_id,user_id' });
+  if (error) { showToast('Failed to save rating'); console.error(error); return; }
+  showToast('Rating saved!');
+  loadAverageRating();
+}
+
+async function loadAverageRating() {
+  const { data, error } = await sb.from('ratings').select('score').eq('anime_id', parseInt(animeId));
+  if (error || !data || !data.length) {
+    document.getElementById('ratingAvg').textContent = '–';
+    document.getElementById('ratingCount').textContent = 'No ratings yet';
+    return;
+  }
+  const avg = data.reduce((s,r) => s + r.score, 0) / data.length;
+  document.getElementById('ratingAvg').textContent = avg.toFixed(1);
+  document.getElementById('ratingCount').textContent = data.length + ' rating' + (data.length===1?'':'s');
+}
+
+async function loadMyRating() {
+  if (!authUser) { myRating = 0; renderStars(); return; }
+  const { data } = await sb.from('ratings').select('score').eq('anime_id', parseInt(animeId)).eq('user_id', authUser.id).maybeSingle();
+  myRating = data?.score || 0;
+  renderStars();
+}
+
+async function postComment() {
+  if (!authUser) { showToast('Log in to comment'); return; }
+  const input = document.getElementById('commentInput');
+  const body = input.value.trim();
+  if (!body) return;
+  const username = (authUser.email || 'Fan').split('@')[0];
+  const { error } = await sb.from('comments').insert({
+    anime_id: parseInt(animeId), user_id: authUser.id, username, body
+  });
+  if (error) { showToast('Failed to post comment'); console.error(error); return; }
+  input.value = '';
+  loadComments();
+}
+
+function timeAgoShort(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs/24) + 'd ago';
+}
+
+async function loadComments() {
+  const list = document.getElementById('commentsList');
+  const { data, error } = await sb.from('comments').select('*').eq('anime_id', parseInt(animeId)).order('created_at', {ascending:false}).limit(50);
+  if (error || !data || !data.length) {
+    list.innerHTML = '<div class="cr-login-hint">No comments yet — be the first!</div>';
+    return;
+  }
+  list.innerHTML = data.map(c => `
+    <div class="comment-item">
+      <div class="comment-head">
+        <span class="comment-user">${c.username}</span>
+        <span class="comment-time">${timeAgoShort(c.created_at)}</span>
+      </div>
+      <div class="comment-body">${c.body.replace(/</g,'&lt;')}</div>
+    </div>`).join('');
+}
+
+function loadRatingAndComments() {
+  updateAuthUI();
+  loadAverageRating();
+  loadMyRating();
+  loadComments();
 }
 
 let dlQuality = '360p';
@@ -709,6 +886,8 @@ document.addEventListener('keydown', function(e) {
 document.getElementById('epBadge').textContent = 'EP ' + ep;
 loadAnime();
 checkAllProviders();
+renderStars();
+loadRatingAndComments();
 </script>
 
 <script>
