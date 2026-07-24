@@ -1,4 +1,4 @@
-# 🌸 KuroSakura
+# 🌸 Yoruzakura 
 
 A personal anime streaming site — built for fun, learning, and watching anime without the clutter of typical sites.
 
